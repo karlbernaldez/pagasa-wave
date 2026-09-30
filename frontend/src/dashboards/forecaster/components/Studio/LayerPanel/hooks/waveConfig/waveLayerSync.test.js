@@ -62,6 +62,7 @@ const pendingPackage = {
   forecastDate: '2026-09-01',
   chartType: 'analysis',
   ecwamForecastHour: 0,
+  ecwamSourceCycle: '2026090100',
   ecwamFrameReady: false,
 };
 
@@ -88,7 +89,7 @@ describe('ECWAM readiness gating', () => {
       'ecwam-crossfade-source-a',
       expect.objectContaining({
         type: 'raster',
-        tiles: ['/wavetiles/ECWAM/light/2026SEP01/2026083118/{z}/{x}/{y}.png'],
+        tiles: ['/wavetiles/ECWAM/light/2026SEP01/2026090100/{z}/{x}/{y}.png'],
       })
     );
     expect(map.addLayer).toHaveBeenCalledWith(
@@ -157,7 +158,7 @@ describe('ECWAM readiness gating', () => {
 
     expect(map.addSource).toHaveBeenCalledWith('wave-contours-ECWAM', {
       type: 'geojson',
-      data: '/wavetiles/ECWAM/contours/2026SEP01/2026083118/contours.geojson',
+      data: '/wavetiles/ECWAM/contours/2026SEP01/2026090100/contours.geojson',
     });
   });
 
@@ -174,7 +175,7 @@ describe('ECWAM readiness gating', () => {
     });
 
     expect(source.setData).toHaveBeenCalledWith(
-      '/wavetiles/ECWAM/contours/2026SEP01/2026083121/contours.geojson'
+      '/wavetiles/ECWAM/contours/2026SEP01/2026090103/contours.geojson'
     );
     expect(map.removeSource).not.toHaveBeenCalledWith('wave-contours-ECWAM');
   });
@@ -185,6 +186,7 @@ describe('WW3 forecast navigation', () => {
     forecastDate: '2026-09-01',
     chartType: '24h forecast',
     ww3ForecastHour: 24,
+    ww3SourceCycle: '2026090100',
   };
 
   it('creates the first WW3 raster in the active crossfade slot', () => {
@@ -196,7 +198,7 @@ describe('WW3 forecast navigation', () => {
       'ww3-crossfade-source-a',
       expect.objectContaining({
         type: 'raster',
-        tiles: ['/wavetiles/WW3/light/2026SEP01/2026090118/{z}/{x}/{y}.png'],
+        tiles: ['/wavetiles/WW3/light/2026SEP01/2026090200/{z}/{x}/{y}.png'],
       })
     );
     expect(map.addLayer).toHaveBeenCalledWith(
@@ -251,7 +253,7 @@ describe('WW3 forecast navigation', () => {
     syncWaveContourLayers(map, ['WW3'], true, false, ww3Package);
 
     const source = map.getSource('wave-contours-WW3');
-    expect(source.data).toBe('/wavetiles/WW3/contours/2026SEP01/2026090118/contours.geojson');
+    expect(source.data).toBe('/wavetiles/WW3/contours/2026SEP01/2026090200/contours.geojson');
 
     syncWaveContourLayers(map, ['WW3'], true, false, {
       ...ww3Package,
@@ -259,7 +261,7 @@ describe('WW3 forecast navigation', () => {
     });
 
     expect(source.setData).toHaveBeenCalledWith(
-      '/wavetiles/WW3/contours/2026SEP01/2026090121/contours.geojson'
+      '/wavetiles/WW3/contours/2026SEP01/2026090203/contours.geojson'
     );
     expect(map.removeSource).not.toHaveBeenCalledWith('wave-contours-WW3');
   });

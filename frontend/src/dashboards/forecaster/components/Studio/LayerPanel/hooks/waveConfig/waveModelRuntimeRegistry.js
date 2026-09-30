@@ -52,6 +52,16 @@ const formatRunTime = (date) =>
     date.getUTCHours()
   )}`;
 
+const parseSourceCycle = (sourceCycle) => {
+  const match = String(sourceCycle || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
+  if (!match) return null;
+
+  const parsed = new Date(
+    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]))
+  );
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 export const setWaveModelRuntimeCatalog = (models = []) => {
   runtimeCatalog.clear();
   models.forEach((model) => {
@@ -65,14 +75,23 @@ export const setWaveModelRuntimeCatalog = (models = []) => {
 export const getWaveModelRuntimeProfile = (model) =>
   runtimeCatalog.get(normalizeCode(model)) || null;
 
-export const resolveManagedWaveRun = ({ model, forecastDate, chartType, forecastHour } = {}) => {
+export const resolveManagedWaveRun = ({
+  model,
+  forecastDate,
+  chartType,
+  forecastHour,
+  sourceCycle,
+} = {}) => {
   const profile = getWaveModelRuntimeProfile(model);
   if (!profile || profile.mode !== 'managed_timestamp') return null;
 
   const packageDateValue = parseForecastDate(forecastDate);
-  const cycleDate = new Date(packageDateValue.getTime());
-  cycleDate.setUTCDate(cycleDate.getUTCDate() + Number(profile.cycleDayOffset || 0));
-  cycleDate.setUTCHours(Number(profile.cycleHourUtc || 0), 0, 0, 0);
+  const publishedCycle = parseSourceCycle(sourceCycle);
+  const cycleDate = publishedCycle || new Date(packageDateValue.getTime());
+  if (!publishedCycle) {
+    cycleDate.setUTCDate(cycleDate.getUTCDate() + Number(profile.cycleDayOffset || 0));
+    cycleDate.setUTCHours(Number(profile.cycleHourUtc || 0), 0, 0, 0);
+  }
 
   const requestedHour = forecastHour == null ? chartDefaultHour(chartType) : Number(forecastHour);
   const cadence = Number(profile.forecastCadenceHours || 1);
