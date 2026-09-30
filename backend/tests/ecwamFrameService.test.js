@@ -24,8 +24,8 @@ test('rejects malformed and impossible package dates', () => {
   assert.equal(validateFrameRequest('not-a-date', 3).valid, false);
 });
 
-test('requires the previous-day 18Z ECWAM source cycle', () => {
-  assert.equal(requiredEcwamSourceCycle('2026-09-03'), '2026090218');
-  assert.equal(requiredEcwamSourceCycle('2027-01-01'), '2026123118');
-  assert.equal(requiredEcwamSourceCycle('not-a-date'), null);
+test('resolves the configured ECWAM source cycle policy', async () => {
+  assert.equal(await requiredEcwamSourceCycle('2026-09-03'), '2026090218');
+  assert.equal(await requiredEcwamSourceCycle('2027-01-01'), '2026123118');
+  assert.equal(await requiredEcwamSourceCycle('not-a-date'), null);
 });
