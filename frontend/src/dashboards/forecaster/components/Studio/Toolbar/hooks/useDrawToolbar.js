@@ -53,16 +53,24 @@ export function useDrawToolbar({
 
   // Clear transient toolbar marker state when changing projects.
   useEffect(() => {
-    setPendingMapClick(null);
-    setSelectedToolType(null);
-    setShowTitleModal(false);
-    setOpenModals({
-      featureNotAvailable: false,
-      pointInputChoice: false,
-      lowWaveMarkerChoice: false,
-      manualInput: false,
-      markerTitle: false,
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setPendingMapClick(null);
+      setSelectedToolType(null);
+      setShowTitleModal(false);
+      setOpenModals({
+        featureNotAvailable: false,
+        pointInputChoice: false,
+        lowWaveMarkerChoice: false,
+        manualInput: false,
+        markerTitle: false,
+      });
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
 
   // ── Tool selection ───────────────────────────────────────
