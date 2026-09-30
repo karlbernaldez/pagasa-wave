@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
-import { getSettings } from '@/api/siteSettings';
 import { readBoolStorage } from '../utils/layerPanelUtils';
 import {
   CYCLONE_TRACK_STORAGE_KEY,
@@ -18,12 +17,16 @@ import {
   setHimawariSatelliteVisibility,
 } from '@dashboards/forecaster/map/layers/satelliteLayer';
 import {
+  DEFAULT_GRATICULE_OPACITY,
   DEFAULT_GRATICULE_SPACING,
-  GRATICULE_SPACING_OPTIONS,
+  GRATICULE_OPACITY_STORAGE_KEY,
   GRATICULE_STORAGE_KEY,
   ensureGraticuleLayer,
+  normalizeGraticuleOpacity,
   normalizeGraticuleSpacing,
+  readStoredGraticuleOpacity,
   readStoredGraticuleSpacing,
+  updateGraticuleOpacity,
   updateGraticuleSpacing,
 } from '@dashboards/forecaster/utils/layers/graticuleLayer';
 
@@ -66,6 +69,9 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
   const [satelliteLayer, setSatelliteLayer] = useState(false);
   const [graticuleSpacing, setGraticuleSpacingState] = useState(() =>
     readStoredGraticuleSpacing(DEFAULT_GRATICULE_SPACING)
+  );
+  const [graticuleOpacity, setGraticuleOpacityState] = useState(() =>
+    readStoredGraticuleOpacity(DEFAULT_GRATICULE_OPACITY)
   );
 
   // ── Project guard ───────────────────────────────────────────────────────────
@@ -123,31 +129,6 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     });
   };
 
-  useEffect(() => {
-    let cancelled = false;
-
-    if (typeof window !== 'undefined' && window.localStorage.getItem(GRATICULE_STORAGE_KEY)) {
-      return undefined;
-    }
-
-    getSettings('mapview')
-      .then((settings) => {
-        if (cancelled) return;
-        const spacing = normalizeGraticuleSpacing(
-          settings?.graticuleSpacing,
-          DEFAULT_GRATICULE_SPACING
-        );
-        setGraticuleSpacingState(spacing);
-      })
-      .catch(() => {
-        // Keep the local fallback when settings are temporarily unavailable.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   // ── Hydrate from localStorage + apply to map ────────────────────────────────
   useEffect(() => {
     const saved = {
@@ -182,6 +163,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       // Utilities
       ensureGraticuleLayer(map, {
         spacing: graticuleSpacing,
+        opacity: graticuleOpacity,
         visible: saved.utilities.GRATICULES,
         isDarkMode,
       });
@@ -230,7 +212,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
 
     map.once('load', apply);
     return () => map.off('load', apply);
-  }, [graticuleSpacing, isDarkMode, mapRef, projectId]);
+  }, [graticuleOpacity, graticuleSpacing, isDarkMode, mapRef, projectId]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -239,6 +221,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     const restoreGraticules = () => {
       ensureGraticuleLayer(map, {
         spacing: graticuleSpacing,
+        opacity: graticuleOpacity,
         visible: utilitiesLayers.GRATICULES,
         isDarkMode,
       });
@@ -246,7 +229,13 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
 
     map.on('style.load', restoreGraticules);
     return () => map.off('style.load', restoreGraticules);
-  }, [graticuleSpacing, isDarkMode, mapRef, utilitiesLayers.GRATICULES]);
+  }, [
+    graticuleOpacity,
+    graticuleSpacing,
+    isDarkMode,
+    mapRef,
+    utilitiesLayers.GRATICULES,
+  ]);
 
   useEffect(() => {
     if (!utilitiesLayers.PAGASA_NWP_RASTER) return;
@@ -359,7 +348,6 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
 
   const setGraticuleSpacing = (value) => {
     const spacing = normalizeGraticuleSpacing(value, graticuleSpacing);
-    if (!GRATICULE_SPACING_OPTIONS.includes(spacing)) return;
 
     setGraticuleSpacingState(spacing);
     localStorage.setItem(GRATICULE_STORAGE_KEY, String(spacing));
@@ -369,10 +357,29 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
 
     ensureGraticuleLayer(map, {
       spacing,
+      opacity: graticuleOpacity,
       visible: utilitiesLayers.GRATICULES,
       isDarkMode,
     });
     updateGraticuleSpacing(map, spacing);
+  };
+
+  const setGraticuleOpacity = (value) => {
+    const opacity = normalizeGraticuleOpacity(value, graticuleOpacity);
+
+    setGraticuleOpacityState(opacity);
+    localStorage.setItem(GRATICULE_OPACITY_STORAGE_KEY, String(opacity));
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    ensureGraticuleLayer(map, {
+      spacing: graticuleSpacing,
+      opacity,
+      visible: utilitiesLayers.GRATICULES,
+      isDarkMode,
+    });
+    updateGraticuleOpacity(map, opacity);
   };
 
   const toggleSatelliteLayer = () => {
@@ -410,10 +417,12 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     utilitiesLayers,
     satelliteLayer,
     graticuleSpacing,
+    graticuleOpacity,
     activeCount,
     toggleDomainLayer,
     toggleUtilityLayer,
     setGraticuleSpacing,
+    setGraticuleOpacity,
     toggleSatelliteLayer,
   };
 };
