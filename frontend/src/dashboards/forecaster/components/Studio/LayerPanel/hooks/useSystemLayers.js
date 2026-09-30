@@ -55,7 +55,13 @@ const safeSetLayoutVisibility = (map, layerId, visible) => {
  * Manages domain, utility, and satellite layer state.
  * Reads initial values from localStorage, then applies them to the map once loaded.
  */
-export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId }) => {
+export const useSystemLayers = ({
+  mapRef,
+  mapLoaded = false,
+  isDarkMode,
+  forecastDate,
+  projectId,
+}) => {
   const [domainLayers, setDomainLayers] = useState({
     PAR: false, TCID: false, TCAD: false,
   });
@@ -151,6 +157,8 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     setUtilitiesLayers(saved.utilities);
     setSatelliteLayer(saved.satellite);
 
+    if (!mapLoaded) return undefined;
+
     const map = mapRef.current;
     if (!isUsableMap(map)) return undefined;
 
@@ -213,9 +221,18 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
 
     map.once('load', apply);
     return () => map.off('load', apply);
-  }, [graticuleOpacity, graticuleSpacing, isDarkMode, mapRef, projectId]);
+  }, [
+    graticuleOpacity,
+    graticuleSpacing,
+    isDarkMode,
+    mapLoaded,
+    mapRef,
+    projectId,
+  ]);
 
   useEffect(() => {
+    if (!mapLoaded) return undefined;
+
     const map = mapRef.current;
     if (!map) return undefined;
 
@@ -235,6 +252,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     graticuleOpacity,
     graticuleSpacing,
     isDarkMode,
+    mapLoaded,
     mapRef,
     utilitiesLayers.GRATICULES,
   ]);
