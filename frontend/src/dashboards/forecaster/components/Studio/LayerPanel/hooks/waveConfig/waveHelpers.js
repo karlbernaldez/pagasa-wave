@@ -29,23 +29,23 @@ const BMKG_TILE_BASE =
   import.meta.env.VITE_BMKG_TILE_BASE_URL?.replace(/\/$/, '') ||
   'https://peta-maritim.bmkg.go.id/api21/mpl_req/w3g_global/swh/0';
 
-const resolveForecastContext = ({ forecastDate, chartType, forecastHour }) =>
-  forecastDate || chartType || forecastHour !== undefined
-    ? { forecastDate, chartType, forecastHour }
+const resolveForecastContext = ({ forecastDate, chartType, forecastHour, sourceCycle }) =>
+  forecastDate || chartType || forecastHour !== undefined || sourceCycle
+    ? { forecastDate, chartType, forecastHour, sourceCycle }
     : getCachedForecastPackageContext();
 
 const TILE_URL_BUILDERS = {
   MRI3: ({ theme, date }) =>
     `${WAVE_BUCKET_BASE}/MRI3/${theme}/${date}/${MRI3_TIMESTEP}/{z}/{x}/{y}.png`,
-  WW3: ({ theme, forecastDate, chartType, forecastHour }) => {
+  WW3: ({ theme, forecastDate, chartType, forecastHour, sourceCycle }) => {
     const { runTag } = resolveWW3ForecastRun(
-      resolveForecastContext({ forecastDate, chartType, forecastHour })
+      resolveForecastContext({ forecastDate, chartType, forecastHour, sourceCycle })
     );
     return `${WW3_TILE_BASE}/WW3/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
-  ECWAM: ({ theme, forecastDate, chartType, forecastHour }) => {
+  ECWAM: ({ theme, forecastDate, chartType, forecastHour, sourceCycle }) => {
     const { runTag } = resolveECWAMForecastRun(
-      resolveForecastContext({ forecastDate, chartType, forecastHour })
+      resolveForecastContext({ forecastDate, chartType, forecastHour, sourceCycle })
     );
     return `${ECWAM_TILE_BASE}/ECWAM/${theme}/${runTag}/{z}/{x}/{y}.png`;
   },
@@ -57,11 +57,19 @@ const TILE_URL_BUILDERS = {
   },
 };
 
-export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType, forecastHour }) => {
+export const buildWaveTileUrl = ({
+  model,
+  theme,
+  date,
+  forecastDate,
+  chartType,
+  forecastHour,
+  sourceCycle,
+}) => {
   const m = normalizeModelName(model);
   const managedRun = resolveManagedWaveRun({
     model: m,
-    ...resolveForecastContext({ forecastDate, chartType, forecastHour }),
+    ...resolveForecastContext({ forecastDate, chartType, forecastHour, sourceCycle }),
   });
   if (managedRun) {
     return `${WW3_TILE_BASE}/${m}/${theme}/${managedRun.runTag}/{z}/{x}/{y}.png`;
@@ -69,26 +77,32 @@ export const buildWaveTileUrl = ({ model, theme, date, forecastDate, chartType, 
 
   const builder = TILE_URL_BUILDERS[m];
   return builder
-    ? builder({ theme, date, forecastDate, chartType, forecastHour })
+    ? builder({ theme, date, forecastDate, chartType, forecastHour, sourceCycle })
     : `${WAVE_BUCKET_BASE}/${m}/${theme}/${date}/{z}/{x}/{y}.png`;
 };
 
 const CONTOUR_URL_BUILDERS = {
-  WW3: ({ forecastDate, chartType, forecastHour }) => {
+  WW3: ({ forecastDate, chartType, forecastHour, sourceCycle }) => {
     const { runTag } = resolveWW3ForecastRun(
-      resolveForecastContext({ forecastDate, chartType, forecastHour })
+      resolveForecastContext({ forecastDate, chartType, forecastHour, sourceCycle })
     );
     return `${WW3_TILE_BASE}/WW3/contours/${runTag}/contours.geojson`;
   },
-  ECWAM: ({ forecastDate, chartType, forecastHour }) => {
+  ECWAM: ({ forecastDate, chartType, forecastHour, sourceCycle }) => {
     const { runTag } = resolveECWAMForecastRun(
-      resolveForecastContext({ forecastDate, chartType, forecastHour })
+      resolveForecastContext({ forecastDate, chartType, forecastHour, sourceCycle })
     );
     return `${ECWAM_TILE_BASE}/ECWAM/contours/${runTag}/contours.geojson`;
   },
 };
 
-export const buildWaveContourUrl = ({ model, forecastDate, chartType, forecastHour } = {}) => {
+export const buildWaveContourUrl = ({
+  model,
+  forecastDate,
+  chartType,
+  forecastHour,
+  sourceCycle,
+} = {}) => {
   const normalizedModel = normalizeModelName(model);
   const managedRun = resolveManagedWaveRun({
     model: normalizedModel,
@@ -101,7 +115,7 @@ export const buildWaveContourUrl = ({ model, forecastDate, chartType, forecastHo
   }
 
   const builder = CONTOUR_URL_BUILDERS[normalizedModel];
-  return builder ? builder({ forecastDate, chartType, forecastHour }) : null;
+  return builder ? builder({ forecastDate, chartType, forecastHour, sourceCycle }) : null;
 };
 
 export const buildWW3ContourUrl = ({ forecastDate, chartType, forecastHour } = {}) =>
