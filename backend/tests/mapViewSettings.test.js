@@ -61,11 +61,13 @@ test('map view settings accept a valid admin payload', () => {
 
   assert.deepEqual(parseMapViewSettingsPayload(payload), payload);
 });
+
 test('map view settings reject invalid zoom ordering', () => {
   assert.throws(
-    () => parseMapViewSettingsPayload({
-      zoom: { min: 9, default: 6, max: 12 },
-    }),
+    () =>
+      parseMapViewSettingsPayload({
+        zoom: { min: 9, default: 6, max: 12 },
+      }),
     (error) => {
       assert.equal(error.statusCode, 400);
       assert.match(error.message, /Invalid map view settings payload/);
@@ -77,10 +79,11 @@ test('map view settings reject invalid zoom ordering', () => {
 
 test('map view settings reject invalid bounds ordering', () => {
   assert.throws(
-    () => parseMapViewSettingsPayload({
-      maxBounds: { west: 170, east: 80 },
-      fitBounds: { south: 25, north: 5 },
-    }),
+    () =>
+      parseMapViewSettingsPayload({
+        maxBounds: { west: 170, east: 80 },
+        fitBounds: { south: 25, north: 5 },
+      }),
     (error) => {
       assert.equal(error.statusCode, 400);
       assert.ok(error.details.includes('maxBounds.west must be less than maxBounds.east.'));
@@ -92,11 +95,12 @@ test('map view settings reject invalid bounds ordering', () => {
 
 test('map view settings reject unsafe numeric ranges', () => {
   assert.throws(
-    () => parseMapViewSettingsPayload({
-      center: { longitude: 190, latitude: -95 },
-      padding: { top: -1, right: 1001 },
-      fitBoundsMaxZoom: 30,
-    }),
+    () =>
+      parseMapViewSettingsPayload({
+        center: { longitude: 190, latitude: -95 },
+        padding: { top: -1, right: 1001 },
+        fitBoundsMaxZoom: 30,
+      }),
     (error) => {
       assert.equal(error.statusCode, 400);
       assert.ok(error.details.includes('center.longitude must be between -180 and 180.'));
