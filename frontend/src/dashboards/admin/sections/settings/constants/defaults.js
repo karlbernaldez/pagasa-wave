@@ -45,6 +45,7 @@ export const DEFAULT_MAP_VIEW = {
   fitBounds: { ...DEFAULT_STUDIO_MAP_VIEW.fitBounds },
   padding: { ...DEFAULT_STUDIO_MAP_VIEW.padding },
   fitBoundsMaxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
+  mapStyle: { ...DEFAULT_STUDIO_MAP_VIEW.mapStyle },
 };
 
 export const DEFAULT_OPERATIONS = {
