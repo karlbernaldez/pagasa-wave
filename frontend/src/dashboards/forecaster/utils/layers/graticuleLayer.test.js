@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildGraticuleFeatureCollection,
   findGraticuleInsertionLayer,
+  isForeignGraticuleLayer,
   normalizeGraticuleOpacity,
   normalizeGraticuleSpacing,
 } from './graticuleLayer';
@@ -24,6 +25,40 @@ describe('graticuleLayer', () => {
     expect(normalizeGraticuleOpacity(1)).toBe(1);
     expect(normalizeGraticuleOpacity(0)).toBe(0.1);
     expect(normalizeGraticuleOpacity(2)).toBe(1);
+  });
+
+  it('detects foreign graticule layers without matching WaveLab-owned layers', () => {
+    expect(
+      isForeignGraticuleLayer({
+        id: 'coordinate-grid-major',
+        type: 'line',
+        source: 'basemap',
+      })
+    ).toBe(true);
+
+    expect(
+      isForeignGraticuleLayer({
+        id: 'lat-lon-grid',
+        type: 'line',
+        source: 'basemap',
+      })
+    ).toBe(true);
+
+    expect(
+      isForeignGraticuleLayer({
+        id: 'graticules',
+        type: 'line',
+        source: 'wavelab-graticules-source',
+      })
+    ).toBe(false);
+
+    expect(
+      isForeignGraticuleLayer({
+        id: 'admin-boundary',
+        type: 'line',
+        source: 'composite',
+      })
+    ).toBe(false);
   });
 
   it('inserts above water and below land when vector layers allow it', () => {
