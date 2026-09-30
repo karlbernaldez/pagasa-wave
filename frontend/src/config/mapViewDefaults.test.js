@@ -16,7 +16,12 @@ describe('normalizeStudioMapViewSettings', () => {
       fitBounds: { ...DEFAULT_STUDIO_MAP_VIEW.fitBounds },
       padding: { ...DEFAULT_STUDIO_MAP_VIEW.padding },
       fitBoundsMaxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
-      mapStyle: { ...DEFAULT_STUDIO_MAP_VIEW.mapStyle },
+      mapStyle: {
+        lightStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.lightStyleId,
+        darkStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.darkStyleId,
+        customStyles: [],
+        themeMode: DEFAULT_STUDIO_MAP_VIEW.mapStyle.themeMode,
+      },
     });
   });
 
@@ -87,24 +92,51 @@ describe('normalizeStudioMapViewSettings', () => {
       left: 50,
     });
     expect(settings.fitBoundsMaxZoom).toBe(DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom);
-    expect(settings.mapStyle).toEqual({ ...DEFAULT_STUDIO_MAP_VIEW.mapStyle });
+    expect(settings.mapStyle).toEqual({
+      lightStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.lightStyleId,
+      darkStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.darkStyleId,
+      customStyles: [],
+      themeMode: DEFAULT_STUDIO_MAP_VIEW.mapStyle.themeMode,
+    });
   });
 
-  it('resolves preset and custom Mapbox styles', () => {
+  it('resolves separate light and dark preset styles', () => {
+    const settings = {
+      mapStyle: {
+        lightStyleId: 'preset:light',
+        darkStyleId: 'preset:dark',
+        customStyles: [],
+        themeMode: 'native',
+      },
+    };
+
+    expect(resolveStudioMapStyleUrl(settings, false)).toBe(
+      'mapbox://styles/mapbox/light-v11'
+    );
+    expect(resolveStudioMapStyleUrl(settings, true)).toBe(
+      'mapbox://styles/mapbox/dark-v11'
+    );
+  });
+
+  it('resolves reusable custom styles by id', () => {
+    const settings = {
+      mapStyle: {
+        lightStyleId: 'custom:day',
+        darkStyleId: 'custom:night',
+        customStyles: [
+          { id: 'day', name: 'Day', url: 'mapbox://styles/example/day' },
+          { id: 'night', name: 'Night', url: 'mapbox://styles/example/night' },
+        ],
+        themeMode: 'native',
+      },
+    };
+
+    expect(resolveStudioMapStyleUrl(settings, false)).toBe(
+      'mapbox://styles/example/day'
+    );
+    expect(resolveStudioMapStyleUrl(settings, true)).toBe(
+      'mapbox://styles/example/night'
+    );
     expect(resolveStudioMapStyleUrl()).toBe(DEFAULT_MAP_STYLE_URL);
-    expect(
-      resolveStudioMapStyleUrl({
-        mapStyle: { preset: 'dark', customStyleUrl: '', themeMode: 'native' },
-      })
-    ).toBe('mapbox://styles/mapbox/dark-v11');
-    expect(
-      resolveStudioMapStyleUrl({
-        mapStyle: {
-          preset: 'custom',
-          customStyleUrl: 'mapbox://styles/example/custom-style',
-          themeMode: 'native',
-        },
-      })
-    ).toBe('mapbox://styles/example/custom-style');
   });
 });
