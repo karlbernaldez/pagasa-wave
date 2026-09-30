@@ -271,7 +271,9 @@ export default function PublishedForecastPage() {
       ].join('|'),
     [activeStyleMode, featureCollection, isDarkMode, mapBoundsLabel, project?._id, raster]
   );
-  const isExportReady = Boolean(exportReadinessKey && exportReadyKey === exportReadinessKey);
+  const isExportReady = Boolean(
+    exportReadinessKey && exportReadyKey === exportReadinessKey
+  );
   const latestReviewSummary = useMemo(() => getLatestReviewSummary(project), [project]);
   const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
   const pageClass = isDarkMode ? 'relative min-h-screen overflow-hidden bg-slate-950 text-slate-100' : 'relative min-h-screen overflow-hidden bg-slate-50 text-slate-950';
