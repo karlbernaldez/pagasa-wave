@@ -4,6 +4,8 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 import { logger } from '../utils/logger.js';
+import { requiredSourceCycle } from './wavePipelineStatus.js';
+import { getWaveSourceCyclePolicy } from './waveSourceCyclePolicy.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +22,6 @@ const MAX_CONCURRENT_BUILDS = Math.max(
   Number.parseInt(process.env.ECWAM_FRAME_MAX_CONCURRENT || '1', 10) || 1
 );
 const FAILURE_TTL_MS = 15 * 60 * 1000;
-const TARGET_CYCLE_HOUR = 18;
 
 const activeBuilds = new Map();
 const recentFailures = new Map();
@@ -60,18 +61,22 @@ function parsePackageDate(packageDate) {
   return date;
 }
 
-export function requiredEcwamSourceCycle(packageDate) {
+export async function requiredEcwamSourceCycle(packageDate) {
   const date = packageDate instanceof Date ? packageDate : parsePackageDate(packageDate);
   if (!date) return null;
-  const target = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - 1, TARGET_CYCLE_HOUR)
+
+  const policy = await getWaveSourceCyclePolicy('ECWAM');
+  const normalizedPackageDate = [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, '0'),
+    String(date.getUTCDate()).padStart(2, '0'),
+  ].join('-');
+
+  return requiredSourceCycle(
+    normalizedPackageDate,
+    policy.preferredHourUtc,
+    policy.cycleDateMode
   );
-  return [
-    target.getUTCFullYear(),
-    String(target.getUTCMonth() + 1).padStart(2, '0'),
-    String(target.getUTCDate()).padStart(2, '0'),
-    String(target.getUTCHours()).padStart(2, '0'),
-  ].join('');
 }
 
 export function validateFrameRequest(packageDate, forecastHour) {
@@ -98,9 +103,11 @@ function packageTag(date) {
   ).padStart(2, '0')}`;
 }
 
-function runTag(date, forecastHour) {
+function runTagFromSourceCycle(sourceCycle, forecastHour) {
+  const match = String(sourceCycle || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
+  if (!match) return null;
   const analysisTime = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() - 1, TARGET_CYCLE_HOUR)
+    Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4]))
   );
   const validTime = new Date(analysisTime.getTime() + forecastHour * 60 * 60 * 1000);
   return [
@@ -160,7 +167,7 @@ function pruneFailures() {
   }
 }
 
-export function getEcwamFrameStatus(packageDate, forecastHour) {
+export async function getEcwamFrameStatus(packageDate, forecastHour) {
   const validation = validateFrameRequest(packageDate, forecastHour);
   if (!validation.valid) {
     return { state: 'invalid', message: validation.message };
@@ -169,9 +176,9 @@ export function getEcwamFrameStatus(packageDate, forecastHour) {
   pruneFailures();
 
   const tag = packageTag(validation.date);
-  const validRunTag = runTag(validation.date, validation.forecastHour);
   const key = frameKey(packageDate, validation.forecastHour);
-  const requiredSourceCycle = requiredEcwamSourceCycle(validation.date);
+  const requiredSourceCycle = await requiredEcwamSourceCycle(validation.date);
+  const validRunTag = runTagFromSourceCycle(requiredSourceCycle, validation.forecastHour);
   const metadata = readPackageMetadata(tag);
 
   if (!metadata) {
@@ -268,8 +275,8 @@ function logChildStream(stream, level, context) {
   });
 }
 
-export function startEcwamFrameBuild(packageDate, forecastHour, requestedBy = null) {
-  const status = getEcwamFrameStatus(packageDate, forecastHour);
+export async function startEcwamFrameBuild(packageDate, forecastHour, requestedBy = null) {
+  const status = await getEcwamFrameStatus(packageDate, forecastHour);
 
   if (status.state === 'invalid' || status.state === 'unavailable') return status;
   if (status.state === 'ready' || status.state === 'building') return status;
