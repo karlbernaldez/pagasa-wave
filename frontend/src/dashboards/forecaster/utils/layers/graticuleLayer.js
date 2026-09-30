@@ -90,28 +90,67 @@ const layerSearchText = (layer = {}) =>
 
 export function findGraticuleInsertionLayer(style = {}) {
   const layers = Array.isArray(style?.layers) ? style.layers : [];
-  const candidates = layers.filter(
-    (layer) => layer?.id && ![MAIN_LAYER_ID, BLUR_LAYER_ID].includes(layer.id)
-  );
+  const candidates = layers
+    .map((layer, index) => ({ layer, index }))
+    .filter(
+      ({ layer }) => layer?.id && ![MAIN_LAYER_ID, BLUR_LAYER_ID].includes(layer.id)
+    );
 
-  const landLayer = candidates.find((layer) => {
+  const isWaterLayer = (layer) => {
+    const text = layerSearchText(layer);
+    return (
+      ['fill', 'raster'].includes(layer.type) &&
+      /(^|[^a-z])(water|ocean|sea|marine)([^a-z]|$)/.test(text)
+    );
+  };
+
+  const isLandLayer = (layer) => {
     if (!['fill', 'fill-extrusion'].includes(layer.type)) return false;
     const text = layerSearchText(layer);
     return /(^|[^a-z])(land|landcover|landuse|terrain|building)([^a-z]|$)/.test(text);
-  });
+  };
 
-  if (landLayer) return landLayer.id;
+  const lastWaterIndex = candidates.reduce(
+    (maxIndex, { layer, index }) => (isWaterLayer(layer) ? Math.max(maxIndex, index) : maxIndex),
+    -1
+  );
 
-  const coastlineLayer = candidates.find((layer) => {
+  // The grid must be above water but below land. Only use a land anchor that
+  // appears after the final water layer; otherwise the water fill will hide it.
+  const landAboveWater = candidates.find(
+    ({ layer, index }) => index > lastWaterIndex && isLandLayer(layer)
+  );
+  if (landAboveWater) return landAboveWater.layer.id;
+
+  const coastlineAboveWater = candidates.find(({ layer, index }) => {
+    if (index <= lastWaterIndex) return false;
     const text = layerSearchText(layer);
     return /coast|shoreline/.test(text);
   });
+  if (coastlineAboveWater) return coastlineAboveWater.layer.id;
 
-  if (coastlineLayer) return coastlineLayer.id;
+  // If the style does not expose an opaque land fill after water, keep the
+  // graticule above the basemap and below labels rather than letting water hide it.
+  const firstSymbolAboveWater = candidates.find(
+    ({ layer, index }) => index > lastWaterIndex && layer.type === 'symbol'
+  );
+  if (firstSymbolAboveWater) return firstSymbolAboveWater.layer.id;
 
-  // Raster/custom styles may not expose a separate land layer. In that case,
-  // keep the grid above the raster but below labels whenever possible.
-  return candidates.find((layer) => layer.type === 'symbol')?.id || null;
+  // Styles with no identifiable water layer can still use their first land fill.
+  if (lastWaterIndex === -1) {
+    const firstLand = candidates.find(({ layer }) => isLandLayer(layer));
+    if (firstLand) return firstLand.layer.id;
+
+    const firstCoastline = candidates.find(({ layer }) => {
+      const text = layerSearchText(layer);
+      return /coast|shoreline/.test(text);
+    });
+    if (firstCoastline) return firstCoastline.layer.id;
+
+    return candidates.find(({ layer }) => layer.type === 'symbol')?.layer.id || null;
+  }
+
+  return null;
 }
 
 function positionGraticuleLayers(map, beforeId) {
