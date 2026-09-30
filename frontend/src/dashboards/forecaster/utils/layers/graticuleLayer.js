@@ -96,6 +96,27 @@ const layerSearchText = (layer = {}) =>
     .join(' ')
     .toLowerCase();
 
+export function isForeignGraticuleLayer(layer = {}) {
+  if (!layer?.id) return false;
+  if ([MAIN_LAYER_ID, BLUR_LAYER_ID].includes(layer.id) && layer.source === SOURCE_ID) {
+    return false;
+  }
+
+  const text = layerSearchText(layer);
+  return /gratic|coordinate.?grid|grid.?line|latitude|longitude|lat.?lon/.test(text);
+}
+
+function removeForeignGraticuleLayers(map) {
+  const layers = map.getStyle?.()?.layers || [];
+  layers
+    .filter(isForeignGraticuleLayer)
+    .forEach((layer) => {
+      if (map.getLayer?.(layer.id)) {
+        map.removeLayer(layer.id);
+      }
+    });
+}
+
 export function findGraticuleInsertionLayer(style = {}) {
   const layers = Array.isArray(style?.layers) ? style.layers : [];
   const candidates = layers
@@ -170,15 +191,6 @@ function positionGraticuleLayers(map, beforeId) {
   if (map.getLayer?.(MAIN_LAYER_ID)) {
     map.moveLayer(MAIN_LAYER_ID, beforeId);
   }
-}
-
-function removeForeignGraticuleLayers(map) {
-  [BLUR_LAYER_ID, MAIN_LAYER_ID].forEach((layerId) => {
-    const layer = map.getLayer?.(layerId);
-    if (layer && layer.source !== SOURCE_ID) {
-      map.removeLayer(layerId);
-    }
-  });
 }
 
 function ensureOwnedSource(map, spacing) {
