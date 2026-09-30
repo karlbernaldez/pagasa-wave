@@ -122,17 +122,15 @@ wavelab_log "Running frontend test suite and production build."
 sudo -u "$APP_USER" bash -lc "
   set -euo pipefail
   cd '$APP_ROOT/frontend'
-  corepack enable
-  corepack prepare pnpm@10.17.1 --activate
-  pnpm install --frozen-lockfile
-  pnpm test
+  npm ci --legacy-peer-deps
+  npm test
 "
 completed_stages+=(frontend_tests)
 
 sudo -u "$APP_USER" bash -lc "
   set -euo pipefail
   cd '$APP_ROOT/frontend'
-  pnpm build
+  npm run build
 "
 completed_stages+=(frontend_build)
 
