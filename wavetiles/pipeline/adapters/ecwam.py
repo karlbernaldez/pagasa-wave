@@ -28,6 +28,7 @@ ECWAM_FILE_RE = re.compile(
 )
 DEFAULT_GRID_POINTS = 271051
 WAVE_HEIGHT_ALIASES = ("swh", "hs", "significant_wave_height")
+SUPPORTED_CYCLE_HOURS = (0, 6, 12, 18)
 
 
 class ECWAMAdapterError(RuntimeError):
@@ -202,7 +203,7 @@ def _assert_same_grid(reference: xr.DataArray, candidate: xr.DataArray, path: Pa
 
 
 class ECWAMGRIBAdapter(WaveModelAdapter):
-    """Normalize the required previous-day 18Z ECWAM GRIB1 cycle into contract v1."""
+    """Normalize the configured ECWAM GRIB1 source cycle into contract v1."""
 
     adapter_id = "ecwam-grib1"
     adapter_version = "1"
@@ -222,15 +223,22 @@ class ECWAMGRIBAdapter(WaveModelAdapter):
         if reference_time is None:
             raise ECWAMAdapterError("ECWAM normalization requires an explicit reference_time.")
         reference_time = _as_utc(reference_time)
-        if reference_time.minute != 0 or reference_time.second != 0 or reference_time.hour != 18:
-            raise ECWAMAdapterError("ECWAM normalization requires an 18Z reference_time/source cycle.")
+        if (
+            reference_time.minute != 0
+            or reference_time.second != 0
+            or reference_time.microsecond != 0
+            or reference_time.hour not in SUPPORTED_CYCLE_HOURS
+        ):
+            raise ECWAMAdapterError(
+                "ECWAM normalization requires a 00Z, 06Z, 12Z, or 18Z reference_time/source cycle."
+            )
 
         required_cycle = _reference_tag(reference_time)
         root = Path(source_root)
         cycle_dir = root if CYCLE_RE.fullmatch(root.name) else root / required_cycle
         if cycle_dir.name != required_cycle:
             raise ECWAMAdapterError(
-                f"ECWAM source cycle must exactly match the 18Z reference time {required_cycle}; got {cycle_dir.name}."
+                f"ECWAM source cycle must exactly match reference time {required_cycle}; got {cycle_dir.name}."
             )
 
         available = _files_by_valid_time(cycle_dir)
@@ -238,7 +246,7 @@ class ECWAMGRIBAdapter(WaveModelAdapter):
         files = tuple(available.get(valid) for valid in expected_times)
         if not cycle_dir.is_dir() or any(path is None for path in files):
             raise ECWAMAdapterError(
-                f"No complete ECWAM 18Z source cycle {required_cycle} under {root} contains T+0 through T+60."
+                f"No complete ECWAM source cycle {required_cycle} under {root} contains T+0 through T+60."
             )
 
         return SourceCycle(
@@ -268,8 +276,8 @@ class ECWAMGRIBAdapter(WaveModelAdapter):
 
         reference_time = _as_utc(source_cycle.reference_time)
         reference_tag = _reference_tag(reference_time)
-        if reference_time.hour != 18 or source_cycle.cycle != reference_tag:
-            raise ECWAMAdapterError("ECWAM sourceCycle must equal the 18Z reference_time.")
+        if reference_time.hour not in SUPPORTED_CYCLE_HOURS or source_cycle.cycle != reference_tag:
+            raise ECWAMAdapterError("ECWAM sourceCycle must equal the configured reference_time.")
         if len(source_cycle.files) != len(hours):
             raise ECWAMAdapterError("ECWAM source file list must contain exactly 21 retained frames.")
         missing = [str(path) for path in source_cycle.files if not path.is_file()]

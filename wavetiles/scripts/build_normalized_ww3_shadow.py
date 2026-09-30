@@ -21,6 +21,7 @@ for path in (ROOT, TILING_DIR):
         sys.path.insert(0, str(path))
 
 from wavetiles.pipeline.reader import NormalizedCycleReader
+from ww3_package_selection import required_source_cycle
 from ww3_contours import generate_contours
 from ww3_direct import (
     DEFAULT_STYLES,
@@ -52,7 +53,8 @@ def package_tag(value: date) -> str:
 
 
 def required_reference_time(package_date: date) -> datetime:
-    return datetime.combine(package_date - timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc).replace(hour=18)
+    source_cycle = required_source_cycle(package_date)
+    return datetime.strptime(source_cycle, "%Y%m%d%H").replace(tzinfo=timezone.utc)
 
 
 def frame_dataset(frame) -> xr.Dataset:
@@ -159,12 +161,12 @@ def main() -> int:
     actual_reference = reader.reference_datetime().astimezone(timezone.utc)
     if actual_reference != required_reference:
         raise SystemExit(
-            "Normalized reference time does not match the package's required previous-day 18Z cycle: "
+            "Normalized reference time does not match the package's configured source cycle: "
             f"expected {required_reference.isoformat()}, got {actual_reference.isoformat()}"
         )
     if reader.source_cycle != required_reference.strftime("%Y%m%d%H"):
         raise SystemExit(
-            f"Normalized WW3 source cycle must equal required 18Z reference: {reader.source_cycle}"
+            f"Normalized WW3 source cycle must equal configured reference: {reader.source_cycle}"
         )
 
     frames = list(reader.iter_frames())

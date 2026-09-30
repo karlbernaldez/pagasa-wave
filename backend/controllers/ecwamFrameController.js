@@ -33,26 +33,26 @@ function responseStatusForState(state) {
   }
 }
 
-export function getEcwamFrame(req, res) {
+export async function getEcwamFrame(req, res) {
   const parsed = parseRequest(req);
   if (parsed.error) {
     return res.status(400).json({ success: false, state: 'invalid', message: parsed.error });
   }
 
-  const result = getEcwamFrameStatus(parsed.packageDate, parsed.forecastHour);
+  const result = await getEcwamFrameStatus(parsed.packageDate, parsed.forecastHour);
   return res.status(responseStatusForState(result.state)).json({
     success: result.state !== 'invalid' && result.state !== 'failed',
     ...result,
   });
 }
 
-export function requestEcwamFrame(req, res) {
+export async function requestEcwamFrame(req, res) {
   const parsed = parseRequest(req);
   if (parsed.error) {
     return res.status(400).json({ success: false, state: 'invalid', message: parsed.error });
   }
 
-  const result = startEcwamFrameBuild(
+  const result = await startEcwamFrameBuild(
     parsed.packageDate,
     parsed.forecastHour,
     req.user?._id ?? req.user?.id ?? null

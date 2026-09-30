@@ -67,7 +67,7 @@ class ECWAMAdapterTests(unittest.TestCase):
             self.make_cycle(root, cycle="2026090612")
             adapter = ECWAMGRIBAdapter(grid_points=6)
 
-            with self.assertRaisesRegex(ECWAMAdapterError, "No complete ECWAM 18Z source cycle"):
+            with self.assertRaisesRegex(ECWAMAdapterError, "No complete ECWAM source cycle"):
                 adapter.discover_cycle(root, reference_time=self.reference)
 
     def test_normalizes_21_frames_into_contract(self):
@@ -102,17 +102,16 @@ class ECWAMAdapterTests(unittest.TestCase):
             self.assertEqual(manifest["sourceFormat"], "grib1")
             self.assertEqual(manifest["frameCount"], 21)
 
-    def test_rejects_non_18z_reference(self):
+    def test_accepts_configured_12z_reference(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            self.make_cycle(root)
+            reference = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+            self.make_cycle(root, cycle="2026090612")
             adapter = ECWAMGRIBAdapter(grid_points=6)
 
-            with self.assertRaisesRegex(ECWAMAdapterError, "18Z"):
-                adapter.discover_cycle(
-                    root,
-                    reference_time=datetime(2026, 9, 6, 12, tzinfo=timezone.utc),
-                )
+            cycle = adapter.discover_cycle(root, reference_time=reference)
+            self.assertEqual(cycle.cycle, "2026090612")
+            self.assertEqual(cycle.reference_time, reference)
 
 
 if __name__ == "__main__":
