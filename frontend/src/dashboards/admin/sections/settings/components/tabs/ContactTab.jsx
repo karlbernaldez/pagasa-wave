@@ -5,6 +5,7 @@ import Accordion from '../ui/Accordion';
 import { Field, TextareaField } from '../ui/FormFields';
 import { ArrayRow, AddButton } from '../ui/ArrayEditorRow';
 import { SortableDnD } from '../ui/Sortable';
+import { createSettingsId } from '../../utils/ensureIds';
 
 const FALLBACK_AVATAR = 'https://i.pravatar.cc/100?img=3';
 
@@ -60,7 +61,7 @@ export default function ContactTab({ settings = {}, setSettings, dark }) {
   const addArrayItem = (key, item) =>
     setSettings((prev) => ({
       ...prev,
-      [key]: [...(prev[key] ?? []), { id: crypto.randomUUID(), ...item }],
+      [key]: [...(prev[key] ?? []), { id: createSettingsId(), ...item }],
     }));
 
   const reorderArray = (key, next) => setSettings((prev) => ({ ...prev, [key]: next }));
