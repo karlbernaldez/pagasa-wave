@@ -17,7 +17,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!isValidFloat(lat)) {
       newErrors.lat = 'Valid latitude required';
     } else {
@@ -26,7 +26,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
         newErrors.lat = 'Must be between -90 and 90';
       }
     }
-    
+
     if (!isValidFloat(lng)) {
       newErrors.lng = 'Valid longitude required';
     } else {
@@ -35,11 +35,11 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
         newErrors.lng = 'Must be between -180 and 180';
       }
     }
-    
+
     if (!title.trim()) {
       newErrors.title = 'Storm title is required';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -74,7 +74,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
   return (
     <AnimatePresence>
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
           onClick={onClose}
         >
@@ -110,8 +110,8 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
                   ? 'bg-cyan-500/20 ring-1 ring-cyan-400/40'
                   : 'bg-blue-500/20 ring-1 ring-blue-500/50'
               }`}>
-                <Navigation 
-                  size={28} 
+                <Navigation
+                  size={28}
                   className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
                   strokeWidth={2}
                 />
@@ -258,7 +258,7 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
                                         )}
                                       </div>
                                     </div>
-                    
+
                                                       </>
                 )}
 
