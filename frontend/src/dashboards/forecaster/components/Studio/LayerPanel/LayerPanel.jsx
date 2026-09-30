@@ -175,9 +175,9 @@ const StudioPanel = ({
 
   // ── Layer hooks ──────────────────────────────────────────────────────────────
   const {
-    domainLayers, utilitiesLayers, satelliteLayer,
+    domainLayers, utilitiesLayers, satelliteLayer, graticuleSpacing,
     activeCount: systemActiveCount,
-    toggleDomainLayer, toggleUtilityLayer, toggleSatelliteLayer,
+    toggleDomainLayer, toggleUtilityLayer, setGraticuleSpacing, toggleSatelliteLayer,
   } = useSystemLayers({ mapRef, isDarkMode, forecastDate, projectId });
 
   const { windConfig, toggleWindLayer, setWindElement, toggleWindModel, setWindBarbStyle } = useWindConfig({ mapRef, isDarkMode });
@@ -516,6 +516,8 @@ const StudioPanel = ({
               waveConfig={waveConfig}
               onToggleDomain={toggleDomainLayer}
               onToggleUtility={toggleUtilityLayer}
+              graticuleSpacing={graticuleSpacing}
+              onSetGraticuleSpacing={setGraticuleSpacing}
               onToggleSatellite={toggleSatelliteLayer}
               onToggleWind={toggleWindLayer}
               onSetWindElement={setWindElement}
