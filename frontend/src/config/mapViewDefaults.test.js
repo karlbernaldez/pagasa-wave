@@ -16,6 +16,7 @@ describe('normalizeStudioMapViewSettings', () => {
       fitBounds: { ...DEFAULT_STUDIO_MAP_VIEW.fitBounds },
       padding: { ...DEFAULT_STUDIO_MAP_VIEW.padding },
       fitBoundsMaxZoom: DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom,
+      graticuleSpacing: DEFAULT_STUDIO_MAP_VIEW.graticuleSpacing,
       mapStyle: {
         lightStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.lightStyleId,
         darkStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.darkStyleId,
@@ -92,6 +93,7 @@ describe('normalizeStudioMapViewSettings', () => {
       left: 50,
     });
     expect(settings.fitBoundsMaxZoom).toBe(DEFAULT_STUDIO_MAP_VIEW.fitBoundsMaxZoom);
+    expect(settings.graticuleSpacing).toBe(DEFAULT_STUDIO_MAP_VIEW.graticuleSpacing);
     expect(settings.mapStyle).toEqual({
       lightStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.lightStyleId,
       darkStyleId: DEFAULT_STUDIO_MAP_VIEW.mapStyle.darkStyleId,
