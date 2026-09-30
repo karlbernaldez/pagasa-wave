@@ -106,7 +106,7 @@ export const buildWaveContourUrl = ({
   const normalizedModel = normalizeModelName(model);
   const managedRun = resolveManagedWaveRun({
     model: normalizedModel,
-    ...resolveForecastContext({ forecastDate, chartType, forecastHour }),
+    ...resolveForecastContext({ forecastDate, chartType, forecastHour, sourceCycle }),
   });
   if (managedRun) {
     return managedRun.profile.contoursEnabled
@@ -118,11 +118,11 @@ export const buildWaveContourUrl = ({
   return builder ? builder({ forecastDate, chartType, forecastHour, sourceCycle }) : null;
 };
 
-export const buildWW3ContourUrl = ({ forecastDate, chartType, forecastHour } = {}) =>
-  buildWaveContourUrl({ model: 'WW3', forecastDate, chartType, forecastHour });
+export const buildWW3ContourUrl = ({ forecastDate, chartType, forecastHour, sourceCycle } = {}) =>
+  buildWaveContourUrl({ model: 'WW3', forecastDate, chartType, forecastHour, sourceCycle });
 
-export const buildECWAMContourUrl = ({ forecastDate, chartType, forecastHour } = {}) =>
-  buildWaveContourUrl({ model: 'ECWAM', forecastDate, chartType, forecastHour });
+export const buildECWAMContourUrl = ({ forecastDate, chartType, forecastHour, sourceCycle } = {}) =>
+  buildWaveContourUrl({ model: 'ECWAM', forecastDate, chartType, forecastHour, sourceCycle });
 
 // ── Icon size expression ──────────────────────────────────────────────────────
 
