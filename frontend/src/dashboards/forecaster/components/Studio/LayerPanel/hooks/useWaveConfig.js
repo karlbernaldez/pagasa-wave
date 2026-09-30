@@ -75,8 +75,12 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const visibleEcwamFrameState =
     ecwamFrameState.packageKey === packageKey ? ecwamFrameState : IDLE_ECWAM_FRAME;
   const metadataMatchesPackage = packageMetadata.key === metadataKey;
-  const ww3SourceCycle = metadataMatchesPackage ? packageMetadata.WW3?.sourceCycle || null : null;
-  const ecwamSourceCycle = metadataMatchesPackage ? packageMetadata.ECWAM?.sourceCycle || null : null;
+  const ww3SourceCycle = metadataMatchesPackage
+    ? packageMetadata.WW3?.sourceCycle || null
+    : null;
+  const ecwamSourceCycle = metadataMatchesPackage
+    ? packageMetadata.ECWAM?.sourceCycle || null
+    : null;
   const forecastPackage = useMemo(
     () => ({
       chartType,
