@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
+import { getSettings } from '@/api/siteSettings';
 import { readBoolStorage } from '../utils/layerPanelUtils';
 import {
   CYCLONE_TRACK_STORAGE_KEY,
@@ -16,6 +17,15 @@ import {
   ensureHimawariSatelliteLayer,
   setHimawariSatelliteVisibility,
 } from '@dashboards/forecaster/map/layers/satelliteLayer';
+import {
+  DEFAULT_GRATICULE_SPACING,
+  GRATICULE_SPACING_OPTIONS,
+  GRATICULE_STORAGE_KEY,
+  ensureGraticuleLayer,
+  normalizeGraticuleSpacing,
+  readStoredGraticuleSpacing,
+  updateGraticuleSpacing,
+} from '@dashboards/forecaster/utils/layers/graticuleLayer';
 
 const isUsableMap = (map) => {
   if (!map || typeof map.getContainer !== 'function') return false;
@@ -54,6 +64,9 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
   });
 
   const [satelliteLayer, setSatelliteLayer] = useState(false);
+  const [graticuleSpacing, setGraticuleSpacingState] = useState(() =>
+    readStoredGraticuleSpacing(DEFAULT_GRATICULE_SPACING)
+  );
 
   // ── Project guard ───────────────────────────────────────────────────────────
   const checkProjectId = () => {
@@ -110,6 +123,31 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     });
   };
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (typeof window !== 'undefined' && window.localStorage.getItem(GRATICULE_STORAGE_KEY)) {
+      return undefined;
+    }
+
+    getSettings('mapview')
+      .then((settings) => {
+        if (cancelled) return;
+        const spacing = normalizeGraticuleSpacing(
+          settings?.graticuleSpacing,
+          DEFAULT_GRATICULE_SPACING
+        );
+        setGraticuleSpacingState(spacing);
+      })
+      .catch(() => {
+        // Keep the local fallback when settings are temporarily unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // ── Hydrate from localStorage + apply to map ────────────────────────────────
   useEffect(() => {
     const saved = {
@@ -142,8 +180,11 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       safeSetLayoutVisibility(map, 'TCAD', saved.domains.TCAD);
 
       // Utilities
-      safeSetLayoutVisibility(map, 'graticules', saved.utilities.GRATICULES);
-      safeSetLayoutVisibility(map, 'graticules_blur', saved.utilities.GRATICULES);
+      ensureGraticuleLayer(map, {
+        spacing: graticuleSpacing,
+        visible: saved.utilities.GRATICULES,
+        isDarkMode,
+      });
       safeSetLayoutVisibility(map, 'SHIPPING_ZONE_LABELS', saved.utilities.SHIPPING_ZONE);
       safeSetLayoutVisibility(map, 'SHIPPING_ZONE_OUTLINE', saved.utilities.SHIPPING_ZONE);
 
@@ -189,7 +230,7 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
 
     map.once('load', apply);
     return () => map.off('load', apply);
-  }, [mapRef, projectId]);
+  }, [graticuleSpacing, isDarkMode, mapRef, projectId]);
 
   useEffect(() => {
     if (!utilitiesLayers.PAGASA_NWP_RASTER) return;
@@ -287,14 +328,35 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
       const map = mapRef.current;
       if (!map) return next;
       if (layerId === 'GRATICULES') {
-        safeSetLayoutVisibility(map, 'graticules', next[layerId]);
-        safeSetLayoutVisibility(map, 'graticules_blur', next[layerId]);
+        ensureGraticuleLayer(map, {
+          spacing: graticuleSpacing,
+          visible: next[layerId],
+          isDarkMode,
+        });
       } else if (layerId === 'SHIPPING_ZONE') {
         safeSetLayoutVisibility(map, 'SHIPPING_ZONE_LABELS', next[layerId]);
         safeSetLayoutVisibility(map, 'SHIPPING_ZONE_OUTLINE', next[layerId]);
       }
       return next;
     });
+  };
+
+  const setGraticuleSpacing = (value) => {
+    const spacing = normalizeGraticuleSpacing(value, graticuleSpacing);
+    if (!GRATICULE_SPACING_OPTIONS.includes(spacing)) return;
+
+    setGraticuleSpacingState(spacing);
+    localStorage.setItem(GRATICULE_STORAGE_KEY, String(spacing));
+
+    const map = mapRef.current;
+    if (!map) return;
+
+    ensureGraticuleLayer(map, {
+      spacing,
+      visible: utilitiesLayers.GRATICULES,
+      isDarkMode,
+    });
+    updateGraticuleSpacing(map, spacing);
   };
 
   const toggleSatelliteLayer = () => {
@@ -331,9 +393,11 @@ export const useSystemLayers = ({ mapRef, isDarkMode, forecastDate, projectId })
     domainLayers,
     utilitiesLayers,
     satelliteLayer,
+    graticuleSpacing,
     activeCount,
     toggleDomainLayer,
     toggleUtilityLayer,
+    setGraticuleSpacing,
     toggleSatelliteLayer,
   };
 };
