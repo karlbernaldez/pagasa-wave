@@ -4,12 +4,19 @@ import { syncWaveContourLayers, syncWaveRasterLayers } from './waveLayerSync';
 
 const createMap = () => {
   const sources = {};
-  const layers = [];
+  const layers = [
+    { id: 'background', type: 'background' },
+    { id: 'ocean-water', type: 'fill', source: 'basemap', 'source-layer': 'water' },
+    { id: 'land-fill', type: 'fill', source: 'basemap', 'source-layer': 'land' },
+    { id: 'place-label', type: 'symbol', source: 'basemap', 'source-layer': 'place_label' },
+  ];
   const listeners = new Map();
 
   const map = {
-    addLayer: vi.fn((layer) => {
-      layers.push(layer);
+    addLayer: vi.fn((layer, beforeId) => {
+      const index = beforeId ? layers.findIndex((item) => item.id === beforeId) : -1;
+      if (index >= 0) layers.splice(index, 0, layer);
+      else layers.push(layer);
     }),
     addSource: vi.fn((id, source) => {
       const mockedSource = { ...source };
@@ -40,6 +47,14 @@ const createMap = () => {
     }),
     setLayoutProperty: vi.fn(),
     setPaintProperty: vi.fn(),
+    moveLayer: vi.fn((id, beforeId) => {
+      const currentIndex = layers.findIndex((layer) => layer.id === id);
+      if (currentIndex < 0) return;
+      const [layer] = layers.splice(currentIndex, 1);
+      const beforeIndex = beforeId ? layers.findIndex((item) => item.id === beforeId) : -1;
+      if (beforeIndex >= 0) layers.splice(beforeIndex, 0, layer);
+      else layers.push(layer);
+    }),
     triggerRepaint: vi.fn(),
     isSourceLoaded: vi.fn(() => false),
     on: vi.fn((event, handler) => {
@@ -71,6 +86,46 @@ const readyPackage = {
   ecwamFrameReady: true,
 };
 
+describe('wave overlay layer ordering', () => {
+  it('inserts wave overlays above water and before land/labels', () => {
+    const map = createMap();
+
+    syncWaveRasterLayers(map, ['WW3'], true, false, false, {
+      forecastDate: '2026-09-30',
+      chartType: '24h forecast',
+      ww3ForecastHour: 24,
+      ww3SourceCycle: '2026093000',
+    });
+
+    expect(map.addLayer).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'ww3-crossfade-layer-a', type: 'raster' }),
+      'land-fill'
+    );
+
+    const layerIds = map.getStyle().layers.map((layer) => layer.id);
+    expect(layerIds.indexOf('ocean-water')).toBeLessThan(layerIds.indexOf('ww3-crossfade-layer-a'));
+    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(layerIds.indexOf('land-fill'));
+    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(layerIds.indexOf('place-label'));
+  });
+
+  it('repositions an existing wave raster when the layer stack changes', () => {
+    const map = createMap();
+    const forecastPackage = {
+      forecastDate: '2026-09-30',
+      chartType: '24h forecast',
+      ww3ForecastHour: 24,
+      ww3SourceCycle: '2026093000',
+    };
+
+    syncWaveRasterLayers(map, ['WW3'], true, false, false, forecastPackage);
+    map.moveLayer.mockClear();
+
+    syncWaveRasterLayers(map, ['WW3'], true, false, false, forecastPackage);
+
+    expect(map.moveLayer).toHaveBeenCalledWith('ww3-crossfade-layer-a', 'land-fill');
+  });
+});
+
 describe('ECWAM readiness gating', () => {
   it('does not create an ECWAM raster source before the frame is ready', () => {
     const map = createMap();
@@ -97,7 +152,7 @@ describe('ECWAM readiness gating', () => {
         id: 'ecwam-crossfade-layer-a',
         paint: expect.objectContaining({ 'raster-opacity': 1 }),
       }),
-      'graticules'
+      'land-fill'
     );
   });
 
@@ -123,7 +178,7 @@ describe('ECWAM readiness gating', () => {
         id: 'ecwam-crossfade-layer-b',
         paint: expect.objectContaining({ 'raster-opacity': 0 }),
       }),
-      'graticules'
+      'land-fill'
     );
 
     map.emit('sourcedata', {
@@ -206,7 +261,7 @@ describe('WW3 forecast navigation', () => {
         id: 'ww3-crossfade-layer-a',
         paint: expect.objectContaining({ 'raster-opacity': 1 }),
       }),
-      'graticules'
+      'land-fill'
     );
   });
 
@@ -232,7 +287,7 @@ describe('WW3 forecast navigation', () => {
         id: 'ww3-crossfade-layer-b',
         paint: expect.objectContaining({ 'raster-opacity': 0 }),
       }),
-      'graticules'
+      'land-fill'
     );
 
     map.emit('sourcedata', {

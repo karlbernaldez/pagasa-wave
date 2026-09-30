@@ -36,6 +36,7 @@ import {
   getChartStyleMode,
   normalizeChartStyleMode,
 } from '@/features/projects/utils/chartStyleModes';
+import { printWindowWhenReady } from '@/features/projects/utils/printWindowWhenReady';
 
 const RECENT_FETCH_LIMIT = 80;
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
@@ -365,7 +366,7 @@ function RecentHistory({ projects, selectedDate, onSelectDate, isDark }) {
   );
 }
 
-function writeChartSetPdfWindow({
+async function writeChartSetPdfWindow({
   printWindow,
   activeDate,
   activeStyleLabel,
@@ -454,11 +455,11 @@ function writeChartSetPdfWindow({
             <div class="generated">Generated ${escapeHtml(new Date().toLocaleString('en-US', { timeZone: PUBLIC_CHART_TIME_ZONE }))}</div>
           </footer>
         </main>
-        <script>window.onload = () => { window.focus(); window.print(); };</script>
       </body>
     </html>
   `);
   printWindow.document.close();
+  await printWindowWhenReady(printWindow);
 }
 
 export default function Charts() {
@@ -514,7 +515,10 @@ export default function Charts() {
     return () => controller.abort();
   }, [chartRequestKey, isDark, query]);
 
-  const recentProjects = state.requestKey === chartRequestKey ? state.projects : [];
+  const recentProjects = useMemo(
+    () => (state.requestKey === chartRequestKey ? state.projects : []),
+    [chartRequestKey, state.projects, state.requestKey]
+  );
   const historyGroups = useMemo(() => groupPublicChartHistory(recentProjects), [recentProjects]);
   const latestDate = historyGroups[0]?.dateKey || '';
   const selectedDateAvailable =
@@ -534,7 +538,10 @@ export default function Charts() {
   const exportRequestKey = `${activeDate}\u0000${isDark ? 'dark' : 'light'}\u0000${chartExportSignature}`;
   const hasExportRequest = Boolean(activeDate && recentProjects.length);
   const exportRequestCurrent = exportState.requestKey === exportRequestKey;
-  const exportEntries = exportRequestCurrent ? exportState.entries : [];
+  const exportEntries = useMemo(
+    () => (exportRequestCurrent ? exportState.entries : []),
+    [exportRequestCurrent, exportState.entries]
+  );
   const exportError = exportRequestCurrent ? exportState.error : '';
   const exportLoading = hasExportRequest && !exportRequestCurrent;
   const pdfReadinessKey = `${exportRequestKey}\u0000${activeStyleMode}`;
@@ -637,7 +644,7 @@ export default function Charts() {
     return () => window.clearInterval(timer);
   }, [activeStyleMode, exportEntries, pdfReadinessKey]);
 
-  const handleDownloadChartSetPdf = () => {
+  const handleDownloadChartSetPdf = async () => {
     if (!isPdfReady) {
       setExportState((prev) => ({
         ...prev,
@@ -680,15 +687,22 @@ export default function Charts() {
     }
 
     setExportState((prev) => ({ ...prev, error: '' }));
-    writeChartSetPdfWindow({
-      printWindow,
-      activeDate,
-      activeStyleLabel,
-      chartEntries: printableEntries,
-      showStaffInfo,
-      logoSrc: publicSettings.logoPreview || '/pagasa-logo.png',
-      pdfNote: publicSettings.publicChartPdfNote || DEFAULT_PUBLIC_CHART_PDF_NOTE,
-    });
+    try {
+      await writeChartSetPdfWindow({
+        printWindow,
+        activeDate,
+        activeStyleLabel,
+        chartEntries: printableEntries,
+        showStaffInfo,
+        logoSrc: publicSettings.logoPreview || '/pagasa-logo.png',
+        pdfNote: publicSettings.publicChartPdfNote || DEFAULT_PUBLIC_CHART_PDF_NOTE,
+      });
+    } catch (error) {
+      setExportState((prev) => ({
+        ...prev,
+        error: error?.message || 'Failed to prepare the PDF print window.',
+      }));
+    }
   };
 
   return (
