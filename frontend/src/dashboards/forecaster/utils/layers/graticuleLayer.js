@@ -4,8 +4,11 @@ export const DEFAULT_GRATICULE_SPACING = 5;
 export const DEFAULT_GRATICULE_OPACITY = 0.5;
 
 const SOURCE_ID = 'wavelab-graticules-source';
-const MAIN_LAYER_ID = 'graticules';
-const BLUR_LAYER_ID = 'graticules_blur';
+export const WAVELAB_GRATICULE_LAYER_ID = 'wavelab-graticules';
+export const WAVELAB_GRATICULE_BLUR_LAYER_ID = 'wavelab-graticules-blur';
+const MAIN_LAYER_ID = WAVELAB_GRATICULE_LAYER_ID;
+const BLUR_LAYER_ID = WAVELAB_GRATICULE_BLUR_LAYER_ID;
+const LEGACY_GRATICULE_LAYER_IDS = new Set(['graticules', 'graticules_blur']);
 const MIN_LATITUDE = -80;
 const MAX_LATITUDE = 80;
 
@@ -102,17 +105,23 @@ export function isForeignGraticuleLayer(layer = {}) {
     return false;
   }
 
+  if (LEGACY_GRATICULE_LAYER_IDS.has(layer.id)) return true;
+
   const text = layerSearchText(layer);
   return /gratic|coordinate.?grid|grid.?line|latitude|longitude|lat.?lon/.test(text);
 }
 
-function removeForeignGraticuleLayers(map) {
+function suppressForeignGraticuleLayers(map) {
   const layers = map.getStyle?.()?.layers || [];
   layers
     .filter(isForeignGraticuleLayer)
     .forEach((layer) => {
-      if (map.getLayer?.(layer.id)) {
-        map.removeLayer(layer.id);
+      try {
+        if (map.getLayer?.(layer.id)) {
+          map.setLayoutProperty(layer.id, 'visibility', 'none');
+        }
+      } catch {
+        // Some imported/custom-style layers may not support mutation.
       }
     });
 }
@@ -196,10 +205,9 @@ function positionGraticuleLayers(map, beforeId) {
 function ensureOwnedSource(map, spacing) {
   const data = buildGraticuleFeatureCollection(spacing);
 
-  // A Mapbox style may define its own layers using the same public IDs.
-  // Always evict those foreign layers before checking our source so the
-  // WaveLab grid remains authoritative after refresh/style reload.
-  removeForeignGraticuleLayers(map);
+  // Keep the basemap's own graticule layers hidden and render WaveLab's
+  // generated grid under unique layer IDs to avoid ownership collisions.
+  suppressForeignGraticuleLayers(map);
 
   const source = map.getSource?.(SOURCE_ID);
 
