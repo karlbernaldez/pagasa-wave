@@ -34,6 +34,7 @@ test('map view settings normalize partial payloads with Studio defaults', () => 
       ...DEFAULT_MAP_VIEW_SETTINGS.padding,
       left: 120,
     },
+    mapStyle: { ...DEFAULT_MAP_VIEW_SETTINGS.mapStyle },
   });
 });
 
@@ -45,6 +46,11 @@ test('map view settings accept a valid admin payload', () => {
     fitBounds: { west: 100, south: 4, east: 140, north: 22 },
     padding: { top: 40, right: 180, bottom: 60, left: 180 },
     fitBoundsMaxZoom: 9,
+    mapStyle: {
+      preset: 'dark',
+      customStyleUrl: '',
+      themeMode: 'native',
+    },
   };
 
   assert.deepEqual(parseMapViewSettingsPayload(payload), payload);
@@ -105,4 +111,41 @@ test('saved invalid map view settings fall back to Studio defaults on read', () 
   };
 
   assert.deepEqual(buildMapViewSettingsResponse(savedBadData), DEFAULT_MAP_VIEW_SETTINGS);
+});
+
+
+test('map view settings accept a valid custom Mapbox style URL', () => {
+  const parsed = parseMapViewSettingsPayload({
+    mapStyle: {
+      preset: 'custom',
+      customStyleUrl: 'mapbox://styles/example-user/example-style',
+      themeMode: 'native',
+    },
+  });
+
+  assert.equal(parsed.mapStyle.preset, 'custom');
+  assert.equal(parsed.mapStyle.customStyleUrl, 'mapbox://styles/example-user/example-style');
+  assert.equal(parsed.mapStyle.themeMode, 'native');
+});
+
+test('map view settings reject malformed custom Mapbox style URLs', () => {
+  assert.throws(
+    () =>
+      parseMapViewSettingsPayload({
+        mapStyle: {
+          preset: 'custom',
+          customStyleUrl: 'https://example.com/not-a-mapbox-style',
+          themeMode: 'adaptive',
+        },
+      }),
+    (error) => {
+      assert.equal(error.statusCode, 400);
+      assert.ok(
+        error.details.includes(
+          'mapStyle.customStyleUrl must be a valid mapbox://styles/<username>/<style-id> URL.'
+        )
+      );
+      return true;
+    }
+  );
 });
