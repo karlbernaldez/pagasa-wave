@@ -251,27 +251,6 @@ const MapViewSettingsTab = ({ settings = {}, setSettings, dark }) => {
         </div>
       </Accordion>
 
-      <Accordion icon={Scan} title="Graticules" dark={dark}>
-        <div className="grid gap-4">
-          <SectionNote dark={dark}>
-            Sets the default coordinate-grid spacing when a forecaster has not chosen a personal Studio preference.
-          </SectionNote>
-          <div className="max-w-xs">
-            <label className={labelCls(dark)}>Default grid spacing</label>
-            <select
-              value={Number(settings.graticuleSpacing || 5)}
-              onChange={(event) => setNested(['graticuleSpacing'], Number(event.target.value))}
-              className={inputCls(dark)}
-            >
-              <option value={1}>1°</option>
-              <option value={2}>2°</option>
-              <option value={5}>5°</option>
-              <option value={10}>10°</option>
-            </select>
-          </div>
-        </div>
-      </Accordion>
-
       <Accordion icon={MapPinned} title="Studio Initial View" dark={dark}>
         <div className="grid gap-4">
           <SectionNote dark={dark}>
