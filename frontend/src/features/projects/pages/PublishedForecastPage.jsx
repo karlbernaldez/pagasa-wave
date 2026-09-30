@@ -30,6 +30,7 @@ import {
   getChartStyleMode,
   normalizeChartStyleMode,
 } from '@/features/projects/utils/chartStyleModes';
+import { printWindowWhenReady } from '@/features/projects/utils/printWindowWhenReady';
 
 const PUBLIC_CHART_TIME_ZONE = 'Asia/Manila';
 const DETAIL_MAP_HEIGHT = 'clamp(360px, calc(100vh - 365px), 540px)';
@@ -131,7 +132,7 @@ function writePdfErrorWindow(printWindow, message) {
   printWindow.document.close();
 }
 
-function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl, chartStyleLabel, showStaffInfo = true }) {
+async function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl, chartStyleLabel, showStaffInfo = true }) {
   const metadata = getPdfMetadata(project, latestReviewSummary, chartStyleLabel, showStaffInfo);
   const footerHtml = showStaffInfo
     ? `<footer class="footer"><span><strong>Final Wave Chart</strong> · Forecaster: ${escapeHtml(metadata.forecaster)}</span><span>Approved by: ${escapeHtml(metadata.approvedBy)}</span></footer>`
@@ -140,8 +141,7 @@ function writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageD
   printWindow.document.open();
   printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(metadata.title)} - Published Wave Chart</title><style>@page{size:A4 landscape;margin:0}*{box-sizing:border-box}html,body{margin:0;width:297mm;height:210mm;background:#e2e8f0}body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{width:297mm;height:210mm;margin:0 auto;padding:10mm;display:grid;grid-template-rows:auto auto 1fr auto;gap:4mm;background:#fff;overflow:hidden}.topbar{display:flex;align-items:center;justify-content:space-between;gap:8mm}.brand{color:#0369a1;font-size:8pt;font-weight:900;letter-spacing:.14em;text-transform:uppercase}.status{border:1px solid #bbf7d0;background:#f0fdf4;color:#047857;border-radius:999px;padding:2mm 3.5mm;font-size:8pt;font-weight:900;text-transform:uppercase;letter-spacing:.08em}h1{margin:0;font-size:18pt;line-height:1.05;letter-spacing:-.02em}.description{margin:1.5mm 0 0;color:#475569;font-size:8.5pt;font-weight:600;line-height:1.35}.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm}.meta-card{border:1px solid #dbeafe;background:#f8fafc;border-radius:3mm;padding:2.5mm}.meta-card dt{margin:0 0 1mm;color:#64748b;font-size:6.5pt;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.meta-card dd{margin:0;color:#0f172a;font-size:8.5pt;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.map-card{border:1px solid #bfdbfe;border-radius:5mm;overflow:hidden;background:#f8fafc;min-height:0}.map-card img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}.footer{display:flex;align-items:center;justify-content:space-between;gap:5mm;color:#64748b;font-size:7pt;font-weight:800}.footer strong{color:#0369a1}@media print{html,body{width:297mm;height:210mm;overflow:hidden;background:#fff}}</style></head><body><main class="page"><section class="topbar"><div class="brand">DOST-PAGASA · WaveLab</div><div class="status">${escapeHtml(metadata.status)}</div></section><header><h1>${escapeHtml(metadata.title)}</h1><p class="description">${escapeHtml(metadata.description)}</p></header><dl class="meta-grid"><div class="meta-card"><dt>Valid Date</dt><dd>${escapeHtml(metadata.validDate)}</dd></div><div class="meta-card"><dt>Chart Type</dt><dd>${escapeHtml(metadata.chartType)}</dd></div><div class="meta-card"><dt>Style</dt><dd>${escapeHtml(metadata.chartStyle)}</dd></div><div class="meta-card"><dt>Published</dt><dd>${escapeHtml(metadata.publishedAt)}</dd></div></dl><section class="map-card"><img src="${imageDataUrl}" alt="${escapeHtml(metadata.title)} published wave chart export" /></section>${footerHtml}</main></body></html>`);
   printWindow.document.close();
-  printWindow.focus();
-  printWindow.print();
+  await printWindowWhenReady(printWindow);
 }
 
 function glassPanelClass(isDarkMode, extra = '') {
@@ -333,7 +333,7 @@ export default function PublishedForecastPage() {
     setExportState({ loading: 'pdf', error: '' });
 
     try {
-      writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl: getExportMapDataUrl(), chartStyleLabel: activeStyle.label, showStaffInfo });
+      await writePdfPrintWindow({ printWindow, project, latestReviewSummary, imageDataUrl: getExportMapDataUrl(), chartStyleLabel: activeStyle.label, showStaffInfo });
       setExportState({ loading: '', error: '' });
     } catch (error) {
       const message = error?.message || 'Failed to export PDF.';
