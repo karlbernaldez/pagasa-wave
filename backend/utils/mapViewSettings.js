@@ -29,6 +29,7 @@ export const DEFAULT_MAP_VIEW_SETTINGS = Object.freeze({
     right: 200,
   }),
   fitBoundsMaxZoom: 8,
+  graticuleSpacing: 5,
   mapStyle: Object.freeze({
     lightStyleId: 'preset:wavelab',
     darkStyleId: 'preset:wavelab',
@@ -170,6 +171,7 @@ export function normalizeMapViewSettings(input = {}) {
       right: readNumber(paddingSource, 'right', defaults.padding.right),
     },
     fitBoundsMaxZoom: readNumber(source, 'fitBoundsMaxZoom', defaults.fitBoundsMaxZoom),
+    graticuleSpacing: readNumber(source, 'graticuleSpacing', defaults.graticuleSpacing),
     mapStyle: {
       lightStyleId: String(
         migratedMapStyle.lightStyleId || defaults.mapStyle.lightStyleId
@@ -218,6 +220,10 @@ export function validateMapViewSettings(settings = {}) {
   if (!isZoom(settings.fitBoundsMaxZoom)) errors.push('fitBoundsMaxZoom must be between 0 and 24.');
   if (settings.fitBoundsMaxZoom > settings.zoom.max) {
     errors.push('fitBoundsMaxZoom must be less than or equal to zoom.max.');
+  }
+
+  if (![1, 2, 5, 10].includes(settings.graticuleSpacing)) {
+    errors.push('graticuleSpacing must be one of 1, 2, 5, or 10 degrees.');
   }
 
   if (!MAP_STYLE_THEME_MODES.has(settings.mapStyle?.themeMode)) {
