@@ -140,27 +140,39 @@ export const useSystemLayers = ({
   useEffect(() => {
     const saved = {
       domains: {
-        PAR:  readBoolStorage('PAR'),
+        PAR: readBoolStorage('PAR'),
         TCID: readBoolStorage('TCID'),
         TCAD: readBoolStorage('TCAD'),
       },
       utilities: {
-        GRATICULES:         readBoolStorage('GRATICULES'),
-        SHIPPING_ZONE:      readBoolStorage('SHIPPING_ZONE'),
-        PAGASA_NWP_RASTER:  readBoolStorage(PAGASA_NWP_RASTER_STORAGE_KEY),
-        CYCLONE_TRACK:      readBoolStorage(CYCLONE_TRACK_STORAGE_KEY),
+        GRATICULES: readBoolStorage('GRATICULES'),
+        SHIPPING_ZONE: readBoolStorage('SHIPPING_ZONE'),
+        PAGASA_NWP_RASTER: readBoolStorage(PAGASA_NWP_RASTER_STORAGE_KEY),
+        CYCLONE_TRACK: readBoolStorage(CYCLONE_TRACK_STORAGE_KEY),
       },
       satellite: readBoolStorage('SATELLITE'),
     };
 
-    setDomainLayers(saved.domains);
-    setUtilitiesLayers(saved.utilities);
-    setSatelliteLayer(saved.satellite);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setDomainLayers(saved.domains);
+      setUtilitiesLayers(saved.utilities);
+      setSatelliteLayer(saved.satellite);
+    });
 
-    if (!mapLoaded) return undefined;
+    if (!mapLoaded) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const map = mapRef.current;
-    if (!isUsableMap(map)) return undefined;
+    if (!isUsableMap(map)) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
     const apply = () => {
       // Domains
@@ -216,12 +228,18 @@ export const useSystemLayers = ({
 
     if (map.isStyleLoaded()) {
       apply();
-      return undefined;
+      return () => {
+        cancelled = true;
+      };
     }
 
     map.once('load', apply);
-    return () => map.off('load', apply);
+    return () => {
+      cancelled = true;
+      map.off('load', apply);
+    };
   }, [
+    forecastDate,
     graticuleOpacity,
     graticuleSpacing,
     isDarkMode,
@@ -268,7 +286,12 @@ export const useSystemLayers = ({
       console.error('[pagasa-nwp-raster-update-error]', error);
       showPagasaNwpRasterError(error?.message || 'Unable to update PAGASA NWP raster.');
     }
-  }, [forecastDate, mapRef, utilitiesLayers.PAGASA_NWP_RASTER]);
+  }, [
+    forecastDate,
+    mapRef,
+    showPagasaNwpRasterError,
+    utilitiesLayers.PAGASA_NWP_RASTER,
+  ]);
 
   // ── Toggle handlers ─────────────────────────────────────────────────────────
   const toggleDomainLayer = (layerId) => {
