@@ -42,7 +42,7 @@ export function DistributionCard({ title, description, rows = [], isDarkMode }) 
   return (
     <section
       className={cn(
-        'min-h-[360px] rounded-2xl border p-5',
+        'min-h-[300px] rounded-xl border p-4',
         isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
       )}
     >
@@ -88,7 +88,7 @@ export function DistributionCard({ title, description, rows = [], isDarkMode }) 
         ) : (
           <p
             className={cn(
-              'py-24 text-center text-xs font-semibold',
+              'py-18 text-center text-xs font-semibold',
               isDarkMode ? 'text-slate-500' : 'text-slate-400'
             )}
           >
@@ -107,7 +107,7 @@ export function TrendCard({ title, description, rows = [], series = [], bucketLa
   return (
     <section
       className={cn(
-        'min-h-[360px] rounded-2xl border p-5',
+        'min-h-[300px] rounded-xl border p-4',
         isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
       )}
     >
@@ -138,7 +138,7 @@ export function TrendCard({ title, description, rows = [], series = [], bucketLa
       </div>
 
       {rows.length ? (
-        <div className="mt-5 h-64 w-full">
+        <div className="mt-4 h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rows} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid stroke={gridColor} vertical={false} />
@@ -176,7 +176,7 @@ export function TrendCard({ title, description, rows = [], series = [], bucketLa
       ) : (
         <p
           className={cn(
-            'py-28 text-center text-xs font-semibold',
+            'py-20 text-center text-xs font-semibold',
             isDarkMode ? 'text-slate-500' : 'text-slate-400'
           )}
         >
@@ -194,7 +194,7 @@ export function BarChartCard({ title, description, rows = [], isDarkMode }) {
   return (
     <section
       className={cn(
-        'min-h-[360px] rounded-2xl border p-5',
+        'min-h-[300px] rounded-xl border p-4',
         isDarkMode ? 'border-white/10 bg-slate-950/50' : 'border-slate-200 bg-white'
       )}
     >
@@ -210,7 +210,7 @@ export function BarChartCard({ title, description, rows = [], isDarkMode }) {
         {description}
       </p>
       {rows.length ? (
-        <div className="mt-5 h-64 w-full">
+        <div className="mt-4 h-56 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={rows}
@@ -241,7 +241,7 @@ export function BarChartCard({ title, description, rows = [], isDarkMode }) {
       ) : (
         <p
           className={cn(
-            'py-28 text-center text-xs font-semibold',
+            'py-20 text-center text-xs font-semibold',
             isDarkMode ? 'text-slate-500' : 'text-slate-400'
           )}
         >

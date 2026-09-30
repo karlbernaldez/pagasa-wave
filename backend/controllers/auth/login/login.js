@@ -1,16 +1,20 @@
+import bcrypt from 'bcryptjs';
+
 import User from '#models/User';
 import { normalizeEmail } from '#controllers/auth/utils/validators';
 import { createAuditLog } from '#services/auditLog';
 import { logger } from '#utils/logger';
 
 import { parseCoordinates } from './utils/parseCoordinates.js';
-import { runLoginGuards } from './loginGuards.js';
+import { autoUnlockIfExpired, runLoginGuards } from './loginGuards.js';
 import { verifyCredentials, resetFailedAttempts } from './loginCredentials.js';
 import { handleSession } from './loginSession.js';
 
 const USER_FIELDS =
   '+password +sessionVersion status role emailVerified lockUntil failedLoginAttempts ' +
   'firstName username lastLoginIP lastLoginUserAgent';
+
+const dummyPasswordHashPromise = bcrypt.hash('wavelab-invalid-login-placeholder', 10);
 
 export const loginUser = async (req, res) => {
   try {
@@ -27,6 +31,11 @@ export const loginUser = async (req, res) => {
     const user = await User.findOne({ email: emailNorm, deletedAt: null }).select(USER_FIELDS);
 
     if (!user) {
+      // Perform a real bcrypt comparison so unknown-email and wrong-password
+      // requests have similar computational cost and are harder to enumerate by timing.
+      const dummyPasswordHash = await dummyPasswordHashPromise;
+      await bcrypt.compare(password, dummyPasswordHash);
+
       logger.warn('Login attempt for unknown email', { email: emailNorm, ip: req.ip });
 
       await createAuditLog({
@@ -42,11 +51,13 @@ export const loginUser = async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
-    const guardResponse = await runLoginGuards(user, req, res, geoMeta);
-    if (guardResponse) return guardResponse;
+    await autoUnlockIfExpired(user);
 
     const credError = await verifyCredentials(user, password, req, res, geoMeta);
     if (credError) return credError;
+
+    const guardResponse = await runLoginGuards(user, req, res, geoMeta);
+    if (guardResponse) return guardResponse;
 
     await resetFailedAttempts(user);
     return await handleSession(user, emailNorm, coordinates, req, res, geoMeta);

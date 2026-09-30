@@ -72,6 +72,9 @@ test('registration treats a pending email change as an occupied address', async 
   assert.deepEqual(queries[1], {
     $or: [{ email: 'reserved@example.com' }, { pendingEmail: 'reserved@example.com' }],
   });
-  assert.equal(res.state.statusCode, 409);
-  assert.match(res.state.body.message, /pending verification/i);
+  assert.equal(res.state.statusCode, 202);
+  assert.equal(
+    res.state.body.message,
+    'If the registration details are available, check your email for verification instructions.'
+  );
 });

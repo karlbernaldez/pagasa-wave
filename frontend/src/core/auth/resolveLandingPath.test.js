@@ -54,6 +54,9 @@ describe('permission-driven frontend authorization helpers', () => {
     expect(
       resolveAuthenticatedLandingPath(user('test', ['settings_public_contact.view']), '/')
     ).toBe('/dashboard/settings');
+    expect(
+      resolveAuthenticatedLandingPath(user('test', ['settings_review_checklist.view']), '/')
+    ).toBe('/dashboard/settings');
   });
 
   it('does not use Studio permission as a generic landing route without a project', () => {

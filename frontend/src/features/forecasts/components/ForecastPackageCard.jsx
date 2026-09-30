@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowRight,
@@ -14,6 +14,7 @@ import {
 
 import Button from '@/components/ui/Button';
 import { getForecastPackageCapabilities } from '@/features/forecasts/forecastPackageCapabilities';
+import PackageReviewChecklistPanel from './PackageReviewChecklistPanel';
 import { CHART_LABELS, formatPackageDate } from '@/features/forecasts/forecastPackageViewModel';
 
 const REQUIRED_CHART_COUNT = 4;
@@ -89,12 +90,15 @@ function getChartActionLabel(status, isReviewablePackage) {
   return isReviewablePackage ? 'Review chart' : 'View chart';
 }
 
-function PackageSummaryModal({
+export function PackageSummaryModal({
   forecastPackage,
   isDarkMode,
   isReviewablePackage,
   onClose,
   onOpenChart,
+  onApprovePackage,
+  approvingPackageId,
+  permissions = [],
 }) {
   const dateLabel = forecastPackage.dateKey
     ? formatPackageDate(forecastPackage.dateKey)
@@ -102,6 +106,23 @@ function PackageSummaryModal({
   const chartCount = forecastPackage.chartCount || forecastPackage.charts?.length || 0;
   const contributorLabel = forecastPackage.contributorLabel || 'No recorded contributors';
   const contributorTitle = (forecastPackage.contributorNames || []).join(', ') || contributorLabel;
+  const [checklistProgress, setChecklistProgress] = useState(null);
+  const capabilities = getForecastPackageCapabilities({
+    permissions,
+    status: forecastPackage.status,
+  });
+  const checklistEnabled = ['Under Review', 'Revision Requested', 'Approved', 'Published'].includes(
+    forecastPackage.status
+  );
+  const chartsReady =
+    (forecastPackage.charts || []).length > 0 &&
+    (forecastPackage.charts || []).every((row) =>
+      ['Approved', 'Published'].includes(row.project?.status)
+    );
+  const isApproving = approvingPackageId === forecastPackage.id;
+  const handleChecklistProgressChange = useCallback((progress) => {
+    setChecklistProgress(progress);
+  }, []);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -119,7 +140,7 @@ function PackageSummaryModal({
       aria-labelledby={`package-${forecastPackage.id}-title`}
     >
       <div
-        className={`relative w-full max-w-5xl overflow-hidden rounded-2xl border shadow-2xl ring-1 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-200/20 bg-[#06203a]/84 text-white shadow-black/50 ring-white/[0.06]' : 'border-white/85 bg-white/76 text-slate-950 shadow-slate-900/20 ring-slate-900/[0.04]'}`}
+        className={`relative max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-2xl border shadow-2xl ring-1 backdrop-blur-3xl ${isDarkMode ? 'border-cyan-200/20 bg-[#06203a]/84 text-white shadow-black/50 ring-white/[0.06]' : 'border-white/85 bg-white/76 text-slate-950 shadow-slate-900/20 ring-slate-900/[0.04]'}`}
       >
         <div
           className={`pointer-events-none absolute inset-x-0 top-0 h-40 ${isDarkMode ? 'bg-[radial-gradient(circle_at_70%_0%,rgba(56,189,248,.16),transparent_45%)]' : 'bg-[radial-gradient(circle_at_70%_0%,rgba(14,165,233,.12),transparent_45%)]'}`}
@@ -263,6 +284,47 @@ function PackageSummaryModal({
             })}
           </div>
 
+          <div className="mt-6">
+            <PackageReviewChecklistPanel
+              packageId={forecastPackage.id}
+              isDarkMode={isDarkMode}
+              canReview={capabilities.canReview}
+              enabled={checklistEnabled}
+              onProgressChange={handleChecklistProgressChange}
+            />
+          </div>
+
+          {capabilities.canApprove && (
+            <div
+              className={`mt-4 rounded-2xl border p-4 ${isDarkMode ? 'border-emerald-300/15 bg-emerald-400/[0.05]' : 'border-emerald-200 bg-emerald-50/70'}`}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p
+                    className={`text-sm font-black ${isDarkMode ? 'text-white' : 'text-slate-950'}`}
+                  >
+                    Package approval
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                    {!chartsReady
+                      ? 'Approve every required chart before approving the package.'
+                      : !checklistProgress?.canApprove
+                        ? 'Resolve all required checklist items before package approval.'
+                        : 'All chart and checklist gates are satisfied.'}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  icon={PackageCheck}
+                  disabled={!chartsReady || !checklistProgress?.canApprove || isApproving}
+                  onClick={() => onApprovePackage?.(forecastPackage)}
+                >
+                  {isApproving ? 'Approving...' : 'Approve package'}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div
             className={`mt-6 flex items-center gap-3 border-t pt-4 text-xs font-semibold ${isDarkMode ? 'border-white/10 text-slate-500' : 'border-white/80 text-slate-500'}`}
           >
@@ -284,8 +346,10 @@ export default function ForecastPackageCard({
   isDarkMode,
   onOpenChart,
   onPublishPackage,
+  onApprovePackage,
   permissions = [],
   publishingPackageId,
+  approvingPackageId,
 }) {
   const [showPackageSummary, setShowPackageSummary] = useState(false);
   const capabilities = getForecastPackageCapabilities({
@@ -391,6 +455,9 @@ export default function ForecastPackageCard({
           isReviewablePackage={canReview}
           onClose={() => setShowPackageSummary(false)}
           onOpenChart={onOpenChart}
+          onApprovePackage={onApprovePackage}
+          approvingPackageId={approvingPackageId}
+          permissions={permissions}
         />
       )}
     </>

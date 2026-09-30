@@ -139,6 +139,11 @@ export async function loadPublishedChartViewAnalytics(
       $facet: {
         totals: [{ $match: periodMatch }, { $count: 'count' }],
         allTime: [{ $count: 'count' }],
+        distinctCharts: [
+          { $match: periodMatch },
+          { $group: { _id: '$project' } },
+          { $count: 'count' },
+        ],
         today: currentDateKey
           ? [{ $match: { dateKey: currentDateKey } }, { $count: 'count' }]
           : [{ $match: { _id: { $exists: false } } }, { $count: 'count' }],
@@ -205,6 +210,7 @@ export async function loadPublishedChartViewAnalytics(
   return {
     totalViews: serializeCount(result.totals?.[0]?.count),
     allTimeViews: serializeCount(result.allTime?.[0]?.count),
+    distinctChartsViewed: serializeCount(result.distinctCharts?.[0]?.count),
     viewsToday,
     viewsYesterday,
     dayOverDay: buildDayOverDay(viewsToday, viewsYesterday),

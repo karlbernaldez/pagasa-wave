@@ -8,8 +8,14 @@ export const MAP_BOUNDS_PRESET = Object.freeze({
   CUSTOM: 'custom',
 });
 
-export const TCAD_MAP_BOUNDS = Object.freeze([[93, 0], [153.8595159535438, 25]]);
-export const TCID_MAP_BOUNDS = Object.freeze([[116, 4], [127, 22]]);
+export const TCAD_MAP_BOUNDS = Object.freeze([
+  [93, 0],
+  [153.8595159535438, 25],
+]);
+export const TCID_MAP_BOUNDS = Object.freeze([
+  [116, 4],
+  [127, 22],
+]);
 
 const LEGACY_PRESET_ALIASES = Object.freeze({
   philippinesRegional: MAP_BOUNDS_PRESET.TCID,
@@ -43,7 +49,9 @@ function isValidLat(value) {
 export function normalizeMapBoundsPreset(value) {
   const preset = String(value || '').trim();
   const normalized = LEGACY_PRESET_ALIASES[preset] || preset;
-  return Object.values(MAP_BOUNDS_PRESET).includes(normalized) ? normalized : MAP_BOUNDS_PRESET.TCAD;
+  return Object.values(MAP_BOUNDS_PRESET).includes(normalized)
+    ? normalized
+    : MAP_BOUNDS_PRESET.TCAD;
 }
 
 export function getMapBoundsCenter(bounds) {
@@ -60,7 +68,9 @@ export function getMapBoundsLabel(settings = {}) {
   const preset = normalizeMapBoundsPreset(settings.mapBoundsPreset);
   if (preset === MAP_BOUNDS_PRESET.TCID) return 'TCID bounds';
   if (preset === MAP_BOUNDS_PRESET.CUSTOM) {
-    const name = String(settings.mapBoundsCustomName || settings.mapBoundsCustom?.name || '').trim();
+    const name = String(
+      settings.mapBoundsCustomName || settings.mapBoundsCustom?.name || ''
+    ).trim();
     return name ? `${name} bounds` : 'Custom bounds';
   }
   return 'TCAD bounds';
@@ -75,27 +85,40 @@ export function resolvePublicMapBounds(settings = {}) {
 
   if (preset === MAP_BOUNDS_PRESET.CUSTOM) {
     const custom = settings.mapBoundsCustom || {};
-    const westLng = toFiniteNumber(custom.westLng ?? settings.westLng ?? DEFAULT_CUSTOM_BOUNDS.westLng);
-    const southLat = toFiniteNumber(custom.southLat ?? settings.southLat ?? DEFAULT_CUSTOM_BOUNDS.southLat);
-    const eastLng = toFiniteNumber(custom.eastLng ?? settings.eastLng ?? DEFAULT_CUSTOM_BOUNDS.eastLng);
-    const northLat = toFiniteNumber(custom.northLat ?? settings.northLat ?? DEFAULT_CUSTOM_BOUNDS.northLat);
+    const westLng = toFiniteNumber(
+      custom.westLng ?? settings.westLng ?? DEFAULT_CUSTOM_BOUNDS.westLng
+    );
+    const southLat = toFiniteNumber(
+      custom.southLat ?? settings.southLat ?? DEFAULT_CUSTOM_BOUNDS.southLat
+    );
+    const eastLng = toFiniteNumber(
+      custom.eastLng ?? settings.eastLng ?? DEFAULT_CUSTOM_BOUNDS.eastLng
+    );
+    const northLat = toFiniteNumber(
+      custom.northLat ?? settings.northLat ?? DEFAULT_CUSTOM_BOUNDS.northLat
+    );
 
-    const valid = [westLng, southLat, eastLng, northLat].every((value) => value !== null)
-      && isValidLng(westLng)
-      && isValidLng(eastLng)
-      && isValidLat(southLat)
-      && isValidLat(northLat)
-      && westLng < eastLng
-      && southLat < northLat;
+    const valid =
+      [westLng, southLat, eastLng, northLat].every((value) => value !== null) &&
+      isValidLng(westLng) &&
+      isValidLng(eastLng) &&
+      isValidLat(southLat) &&
+      isValidLat(northLat) &&
+      westLng < eastLng &&
+      southLat < northLat;
 
-    if (valid) return [[westLng, southLat], [eastLng, northLat]];
+    if (valid)
+      return [
+        [westLng, southLat],
+        [eastLng, northLat],
+      ];
   }
 
   return TCAD_MAP_BOUNDS;
 }
 
-async function loadGeneralSettings() {
-  if (cachedGeneralSettings) return cachedGeneralSettings;
+async function loadGeneralSettings({ force = false } = {}) {
+  if (cachedGeneralSettings && !force) return cachedGeneralSettings;
   if (!inFlightSettingsRequest) {
     inFlightSettingsRequest = getSettings('general')
       .then((settings) => {
@@ -125,7 +148,7 @@ export default function usePublicMapBounds() {
   useEffect(() => {
     let mounted = true;
 
-    loadGeneralSettings().then((data) => {
+    loadGeneralSettings({ force: true }).then((data) => {
       if (mounted) setSettings(data || {});
     });
 
@@ -144,9 +167,12 @@ export default function usePublicMapBounds() {
     };
   }, []);
 
-  return useMemo(() => ({
-    bounds: resolvePublicMapBounds(settings),
-    label: getMapBoundsLabel(settings),
-    settings,
-  }), [settings]);
+  return useMemo(
+    () => ({
+      bounds: resolvePublicMapBounds(settings),
+      label: getMapBoundsLabel(settings),
+      settings,
+    }),
+    [settings]
+  );
 }

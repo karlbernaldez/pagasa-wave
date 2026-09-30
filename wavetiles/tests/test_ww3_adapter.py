@@ -24,13 +24,15 @@ class WW3AdapterTests(unittest.TestCase):
         units: str = "m",
         cycle: str | None = None,
     ) -> Path:
-        cycle_dir = root / (cycle or self.source_cycle)
+        selected_cycle = cycle or self.source_cycle
+        cycle_dir = root / selected_cycle
         cycle_dir.mkdir(parents=True)
+        reference_time = datetime.strptime(selected_cycle, "%Y%m%d%H").replace(tzinfo=timezone.utc)
         latitude = np.array([12.0, 11.0, 10.0], dtype=np.float32)
         longitude = np.array([120.0, 121.0, 122.0], dtype=np.float32)
 
         for index, hour in enumerate(DEFAULT_FORECAST_HOURS):
-            valid_time = self.reference_time + timedelta(hours=hour)
+            valid_time = reference_time + timedelta(hours=hour)
             values = np.full((1, 3, 3), 1.0 + index / 10.0, dtype=np.float32)
             dataset = xr.Dataset(
                 data_vars={
@@ -149,14 +151,15 @@ class WW3AdapterTests(unittest.TestCase):
             with self.assertRaisesRegex(WW3AdapterError, "explicit reference_time"):
                 WW3NetCDFAdapter().discover_cycle(input_root)
 
-    def test_requires_18z_reference_time(self):
+    def test_accepts_configured_12z_reference_time(self):
         with tempfile.TemporaryDirectory() as temporary:
             input_root = Path(temporary) / "input"
-            self.write_source_cycle(input_root)
-            invalid_reference = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+            reference = datetime(2026, 9, 6, 12, tzinfo=timezone.utc)
+            self.write_source_cycle(input_root, cycle="2026090612")
 
-            with self.assertRaisesRegex(WW3AdapterError, "18Z"):
-                WW3NetCDFAdapter().discover_cycle(input_root, reference_time=invalid_reference)
+            source = WW3NetCDFAdapter().discover_cycle(input_root, reference_time=reference)
+            self.assertEqual(source.cycle, "2026090612")
+            self.assertEqual(source.reference_time, reference)
 
     def test_does_not_fall_back_to_12z_source_cycle(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -172,7 +175,7 @@ class WW3AdapterTests(unittest.TestCase):
             cycle_dir = self.write_source_cycle(input_root)
             (cycle_dir / "ww3_grdo.20260907T00.nc").unlink()
 
-            with self.assertRaisesRegex(WW3AdapterError, "No complete WW3 18Z source cycle"):
+            with self.assertRaisesRegex(WW3AdapterError, "No complete WW3 source cycle"):
                 WW3NetCDFAdapter().discover_cycle(input_root, reference_time=self.reference_time)
 
 

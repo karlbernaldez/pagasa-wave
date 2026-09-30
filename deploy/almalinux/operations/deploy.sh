@@ -64,13 +64,16 @@ make_path_traversable() {
 mkdir -p /etc/wavelab
 mkdir -p "$APP_ROOT/backend/logs" "$APP_ROOT/backend/frames" "$APP_ROOT/backend/public" "$APP_ROOT/backend/tmp"
 WAVETILES_ROOT="$APP_ROOT/wavetiles/tiles"
-mkdir -p "$WAVETILES_ROOT"
+PIPELINE_RUNTIME_ROOT="$APP_ROOT/wavetiles/.normalized-product-stage"
+PIPELINE_HISTORY_ROOT="$PIPELINE_RUNTIME_ROOT/.history"
+mkdir -p "$WAVETILES_ROOT" "$PIPELINE_HISTORY_ROOT"
 chown -R "$APP_USER:$APP_GROUP" \
   "$APP_ROOT/backend/logs" \
   "$APP_ROOT/backend/frames" \
   "$APP_ROOT/backend/public" \
   "$APP_ROOT/backend/tmp" \
-  "$WAVETILES_ROOT"
+  "$WAVETILES_ROOT" \
+  "$PIPELINE_RUNTIME_ROOT"
 
 if [[ ! -f "$BACKEND_ENV" ]]; then
   cp "$ALMALINUX_DIR/backend.env.example" "$BACKEND_ENV"

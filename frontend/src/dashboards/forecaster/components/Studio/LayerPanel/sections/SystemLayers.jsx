@@ -206,6 +206,10 @@ const SystemLayersSection = ({
   waveConfig,
   onToggleDomain,
   onToggleUtility,
+  graticuleSpacing,
+  graticuleOpacity,
+  onSetGraticuleSpacing,
+  onSetGraticuleOpacity,
   onToggleSatellite,
   onToggleWind,
   onSetWindElement,
@@ -411,13 +415,117 @@ const SystemLayersSection = ({
             isDarkMode={isDarkMode}
           >
             {UTILITY_LAYERS.map((layer) => (
-              <CheckboxLayerRow
-                key={layer.id}
-                {...layer}
-                active={utilitiesLayers[layer.id]}
-                onToggle={onToggleUtility}
-                isDarkMode={isDarkMode}
-              />
+              <React.Fragment key={layer.id}>
+                <CheckboxLayerRow
+                  {...layer}
+                  active={utilitiesLayers[layer.id]}
+                  onToggle={onToggleUtility}
+                  isDarkMode={isDarkMode}
+                />
+
+                {layer.id === 'GRATICULES' && utilitiesLayers.GRATICULES && (
+                  <div
+                    className={cn(
+                      'mx-2 mb-2 space-y-3 rounded-xl border p-3',
+                      isDarkMode
+                        ? 'border-white/10 bg-white/[0.035]'
+                        : 'border-slate-200/70 bg-white/55'
+                    )}
+                  >
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span
+                          className={cn(
+                            'text-[10px] font-black uppercase tracking-wide',
+                            isDarkMode ? 'text-white/45' : 'text-slate-500'
+                          )}
+                        >
+                          Grid spacing
+                        </span>
+                        <span
+                          className={cn(
+                            'rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums',
+                            isDarkMode
+                              ? 'bg-cyan-400/10 text-cyan-200'
+                              : 'bg-blue-500/10 text-blue-700'
+                          )}
+                        >
+                          {graticuleSpacing}°
+                        </span>
+                      </div>
+
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        step="1"
+                        value={graticuleSpacing}
+                        onChange={(event) => onSetGraticuleSpacing?.(Number(event.target.value))}
+                        aria-label="Graticule spacing in degrees"
+                        className="w-full accent-cyan-500"
+                      />
+
+                      <div
+                        className={cn(
+                          'mt-1 flex justify-between text-[9px] font-bold',
+                          isDarkMode ? 'text-white/25' : 'text-slate-400'
+                        )}
+                      >
+                        <span>1°</span>
+                        <span>5°</span>
+                        <span>10°</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span
+                          className={cn(
+                            'text-[10px] font-black uppercase tracking-wide',
+                            isDarkMode ? 'text-white/45' : 'text-slate-500'
+                          )}
+                        >
+                          Grid opacity
+                        </span>
+                        <span
+                          className={cn(
+                            'rounded-full px-2 py-0.5 text-[10px] font-black tabular-nums',
+                            isDarkMode
+                              ? 'bg-cyan-400/10 text-cyan-200'
+                              : 'bg-blue-500/10 text-blue-700'
+                          )}
+                        >
+                          {Math.round(graticuleOpacity * 100)}%
+                        </span>
+                      </div>
+
+                      <input
+                        type="range"
+                        min="10"
+                        max="100"
+                        step="5"
+                        value={Math.round(graticuleOpacity * 100)}
+                        onChange={(event) =>
+                          onSetGraticuleOpacity?.(Number(event.target.value) / 100)
+                        }
+                        aria-label="Graticule opacity"
+                        className="w-full accent-cyan-500"
+                      />
+
+                      <div
+                        className={cn(
+                          'mt-1 flex justify-between text-[9px] font-bold',
+                          isDarkMode ? 'text-white/25' : 'text-slate-400'
+                        )}
+                      >
+                        <span>10%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </LayerGroupCard>
 

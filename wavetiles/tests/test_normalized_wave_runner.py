@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -112,8 +113,20 @@ class NormalizedWaveRunnerTests(unittest.TestCase):
                     runner.run_pipeline(config, Path("/usr/bin/python3"))
 
             publish.assert_not_called()
+            history_path = config.stage_parent / ".history" / "WW3.jsonl"
+            history = [
+                json.loads(line)
+                for line in history_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(len(history), 1)
+            self.assertEqual(history[0]["outcome"], "FAILED")
+            self.assertEqual(history[0]["packageDate"], "2026-09-07")
             self.assertTrue(config.stage_parent.is_dir())
-            self.assertEqual(list(config.stage_parent.iterdir()), [])
+            self.assertEqual(
+                [entry.name for entry in config.stage_parent.iterdir()],
+                [".history"],
+            )
 
     def test_publishes_valid_stage_and_cleans_it(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -136,6 +149,39 @@ class NormalizedWaveRunnerTests(unittest.TestCase):
             self.assertEqual(args[2], "2026SEP07")
             self.assertEqual(kwargs["expected_source_cycle"], "2026090618")
             self.assertFalse(stage_root.exists())
+
+            history_path = config.stage_parent / ".history" / "WW3.jsonl"
+            history = [
+                json.loads(line)
+                for line in history_path.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
+            self.assertEqual(len(history), 1)
+            self.assertEqual(history[0]["outcome"], "READY")
+            self.assertTrue(history[0]["published"])
+            self.assertEqual(history[0]["frameCount"], 21)
+
+    def test_history_write_failure_does_not_change_successful_builder_outcome(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            config = self.config(root)
+
+            with mock.patch.object(
+                runner, "NormalizedCycleReader", return_value=self.reader()
+            ), mock.patch.object(
+                runner.subprocess,
+                "run",
+                return_value=SimpleNamespace(returncode=0),
+            ), mock.patch.object(
+                runner, "publish"
+            ) as publish, mock.patch.object(
+                runner,
+                "append_run_history",
+                side_effect=OSError("history filesystem unavailable"),
+            ):
+                runner.run_pipeline(config, Path("/usr/bin/python3"))
+
+            publish.assert_called_once()
 
 
 if __name__ == "__main__":

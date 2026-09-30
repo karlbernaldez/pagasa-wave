@@ -3,7 +3,9 @@ import Swal from 'sweetalert2';
 
 export const handleDrawModeChange = (mode, draw, setLayersRef) => {
   if (draw?.changeMode) {
-    if (mode === 'typhoon') { mode = 'draw_point'; } // Normalize to draw_point for typhoon
+    if (mode === 'typhoon') {
+      mode = 'draw_point';
+    } // Normalize to draw_point for typhoon
     // console.log(`Changing draw mode to: ${mode}`);
     draw.changeMode(mode, {
       setLayersRef,
@@ -75,10 +77,11 @@ function getCoordinatePair(coords) {
 
 function makeSafeSourceId(type, name) {
   const safeType = String(type || 'marker').trim() || 'marker';
-  const safeName = String(name || 'Untitled Layer')
-    .trim()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9_-]/g, '') || 'Untitled_Layer';
+  const safeName =
+    String(name || 'Untitled Layer')
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_-]/g, '') || 'Untitled_Layer';
 
   return `${safeType}_${safeName}_${Date.now()}`;
 }
@@ -90,14 +93,16 @@ function getActiveProjectId(projectId) {
 }
 
 function getLowWaveNumberFromName(value) {
-  const match = String(value || '').match(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/i);
+  const match = String(value || '').match(/Low Wave\\s*\\(<\\s*(?:1|2)\\s*m\\)\\s*#(\\d+)/i);
   return match ? Number.parseInt(match[1], 10) : 0;
 }
 
 function isLowWaveLayer(layer = {}) {
-  return layer.type === 'less_1'
-    || layer.markerType === 'less_1'
-    || /^Low Wave \(<1 m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim());
+  return (
+    layer.type === 'less_1' ||
+    layer.markerType === 'less_1' ||
+    /^Low Wave \(<\s*(?:1|2)\s*m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim())
+  );
 }
 
 function getLowWaveCounterKey(projectId) {
@@ -109,7 +114,7 @@ function getVisibleLowWaveMaxNumber() {
 
   try {
     const text = document.body?.innerText || '';
-    const matches = [...text.matchAll(/Low Wave\s*\(<1\s*m\)\s*#(\d+)/gi)];
+    const matches = [...text.matchAll(/Low Wave\\s*\\(<\\s*(?:1|2)\\s*m\\)\\s*#(\\d+)/gi)];
     return matches.reduce((max, match) => Math.max(max, Number.parseInt(match[1], 10) || 0), 0);
   } catch {
     return 0;
@@ -117,7 +122,8 @@ function getVisibleLowWaveMaxNumber() {
 }
 
 function reserveFallbackLowWaveNumber(projectId) {
-  if (typeof window === 'undefined' || !projectId) return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
+  if (typeof window === 'undefined' || !projectId)
+    return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
 
   try {
     const key = getLowWaveCounterKey(projectId);
@@ -145,11 +151,11 @@ function syncFallbackLowWaveCounter(projectId, nextNumber) {
   }
 }
 
-function formatLowWaveDisplayName(number) {
-  return `${MARKER_DISPLAY_NAMES.less_1} #${Math.max(1, Number(number) || 1)}`;
+function formatLowWaveDisplayName(number, labelValue = '<1') {
+  return `Low Wave (${labelValue} m) #${Math.max(1, Number(number) || 1)}`;
 }
 
-function getNextLowWaveDisplayName(layers = [], projectId = '') {
+function getNextLowWaveDisplayName(layers = [], projectId = '', labelValue = '<1') {
   const lowWaveLayers = layers.filter(isLowWaveLayer);
   const maxExistingNumber = lowWaveLayers.reduce(
     (max, layer) => Math.max(max, getLowWaveNumberFromName(layer.name)),
@@ -157,18 +163,31 @@ function getNextLowWaveDisplayName(layers = [], projectId = '') {
   );
   const nextNumber = maxExistingNumber > 0 ? maxExistingNumber + 1 : lowWaveLayers.length + 1;
   syncFallbackLowWaveCounter(projectId, nextNumber);
-  return formatLowWaveDisplayName(nextNumber);
+  return formatLowWaveDisplayName(nextNumber, labelValue);
 }
 
-function getMarkerLabelValue(markerType, rawTitle) {
-  return MARKER_LABEL_VALUES[markerType] || rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
+function getMarkerLabelValue(markerType, rawTitle, requestedLabelValue) {
+  if (markerType === 'less_1') {
+    const requested = String(requestedLabelValue || rawTitle || '').trim();
+    return ['<1', '<2'].includes(requested) ? requested : MARKER_LABEL_VALUES.less_1;
+  }
+
+  return rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
 }
 
-function getMarkerDisplayName(markerType, rawTitle, layers = [], projectId = '') {
+function getMarkerDisplayName(
+  markerType,
+  rawTitle,
+  layers = [],
+  projectId = '',
+  labelValue = '<1'
+) {
   const trimmedTitle = rawTitle?.trim();
 
   if (markerType === 'less_1') {
-    return layers.length ? getNextLowWaveDisplayName(layers, projectId) : formatLowWaveDisplayName(reserveFallbackLowWaveNumber(projectId));
+    return layers.length
+      ? getNextLowWaveDisplayName(layers, projectId, labelValue)
+      : formatLowWaveDisplayName(reserveFallbackLowWaveNumber(projectId), labelValue);
   }
 
   if (markerType === 'text_note') {
@@ -199,7 +218,15 @@ function notifyFeatureSaveFailed(err) {
   });
 }
 
-function buildPointFeaturePayload({ feature, displayName, labelValue, closedMode, activeProjectId, markerType, sourceId }) {
+function buildPointFeaturePayload({
+  feature,
+  displayName,
+  labelValue,
+  closedMode,
+  activeProjectId,
+  markerType,
+  sourceId,
+}) {
   return {
     geometry: feature.geometry,
     properties: {
@@ -228,7 +255,14 @@ function refreshWorkspaceAfterFallbackSave() {
   }, 750);
 }
 
-export function savePointFeature({ coords, title, selectedType, setLayersRef, projectId }) {
+export function savePointFeature({
+  coords,
+  title,
+  selectedType,
+  setLayersRef,
+  projectId,
+  labelValue: requestedLabelValue,
+}) {
   const normalizedCoords = getCoordinatePair(coords);
   if (!normalizedCoords) {
     console.error('❌ Invalid coords passed to savePointFeature:', coords);
@@ -259,14 +293,23 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
 
   const markerType = normalizeMarkerType(selectedType);
   const rawTitle = title?.trim() || '';
-  const sourceId = makeSafeSourceId(markerType, rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker');
-  const labelValue = getMarkerLabelValue(markerType, rawTitle);
+  const sourceId = makeSafeSourceId(
+    markerType,
+    rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker'
+  );
+  const labelValue = getMarkerLabelValue(markerType, rawTitle, requestedLabelValue);
   const closedMode = false;
 
   const updateLayers = typeof setLayersRef?.current === 'function' ? setLayersRef.current : null;
 
   const buildFeatureState = (layers = []) => {
-    const displayName = getMarkerDisplayName(markerType, rawTitle, layers, activeProjectId);
+    const displayName = getMarkerDisplayName(
+      markerType,
+      rawTitle,
+      layers,
+      activeProjectId,
+      labelValue
+    );
     const feature = {
       type: 'Feature',
       geometry: {
@@ -307,60 +350,57 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
     };
   };
 
-  const persistFeature = ({ state, refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
-    feature: state.feature,
-    displayName: state.displayName,
-    labelValue,
-    closedMode,
-    activeProjectId,
-    markerType,
-    sourceId,
-  }))
-    .then(() => {
-      notifyFeatureSaved(state.displayName);
-      if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
-      return state;
-    })
-    .catch((error) => {
-      notifyFeatureSaveFailed(error);
-      return null;
-    });
+  const persistFeature = ({ state, refreshOnSuccess = false } = {}) =>
+    createFeature(
+      buildPointFeaturePayload({
+        feature: state.feature,
+        displayName: state.displayName,
+        labelValue,
+        closedMode,
+        activeProjectId,
+        markerType,
+        sourceId,
+      })
+    )
+      .then(() => {
+        notifyFeatureSaved(state.displayName);
+        if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
+        return state;
+      })
+      .catch((error) => {
+        notifyFeatureSaveFailed(error);
+        return null;
+      });
 
   if (!updateLayers) {
     const state = buildFeatureState([]);
     return persistFeature({ state, refreshOnSuccess: true });
   }
 
-  let pendingSave = Promise.resolve(null);
+  const state = buildFeatureState([]);
 
-  updateLayers((prevLayers) => {
-    const existingSourceIds = prevLayers.map((layer) => layer.sourceID || layer.sourceId || layer.source || layer.id);
-    const state = buildFeatureState(prevLayers);
+  return persistFeature({ state }).then((savedState) => {
+    if (!savedState) return null;
 
-    if (existingSourceIds.includes(sourceId)) {
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'error',
-        title: `The marker "${state.displayName}" already exists.`,
-        showConfirmButton: false,
-        timer: 3000,
-      });
-      pendingSave = Promise.resolve(null);
-      return prevLayers;
-    }
+    updateLayers((prevLayers) => {
+      const existingSourceIds = prevLayers.map(
+        (layer) => layer.sourceID || layer.sourceId || layer.source || layer.id
+      );
 
-    pendingSave = persistFeature({ state });
-    return [...prevLayers, state.panelLayer];
+      if (existingSourceIds.includes(sourceId)) {
+        return prevLayers;
+      }
+
+      return [...prevLayers, savedState.panelLayer];
+    });
+
+    return savedState;
   });
-
-  return pendingSave;
 }
 
-
 // export const handleKeyPress = (
-//   event, tools, draw, isDrawing, toggleDrawing, 
-//   startDrawing, stopDrawing, setIsDrawing, 
+//   event, tools, draw, isDrawing, toggleDrawing,
+//   startDrawing, stopDrawing, setIsDrawing,
 //   onToggleCanvas, onToggleFlagCanvas, map, setLayersRef
 // ) => {
 //   const key = event.key.toLowerCase();
@@ -400,15 +440,18 @@ export function savePointFeature({ coords, title, selectedType, setLayersRef, pr
 //   // Handle stop drawing with 'x'
 //   if (key === 'x' && isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
 
-
 // };
 
 export const toggleDrawing = (isDrawing, setIsDrawing, onToggleCanvas) => {
-  isDrawing ? stopDrawing(setIsDrawing, onToggleCanvas) : startDrawing(setIsDrawing, onToggleCanvas);
+  isDrawing
+    ? stopDrawing(setIsDrawing, onToggleCanvas)
+    : startDrawing(setIsDrawing, onToggleCanvas);
 };
 
 export const toggleFlagDrawing = (isFlagDrawing, setIsFlagDrawing, onToggleFlagCanvas) => {
-  isFlagDrawing ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas) : startFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
+  isFlagDrawing
+    ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas)
+    : startFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
 };
 
 export const startDrawing = (setIsDrawing, onToggleCanvas) => {
@@ -432,5 +475,5 @@ export const stopFlagDrawing = (setIsFlagDrawing, onToggleFlagCanvas) => {
 };
 
 export const toggleCollapse = (setIsCollapsed) => {
-  setIsCollapsed(prev => !prev);
+  setIsCollapsed((prev) => !prev);
 };

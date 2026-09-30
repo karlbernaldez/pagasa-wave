@@ -1,5 +1,25 @@
 const AUTH_API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
 const AUTH_CACHE_TTL_MS = 1500;
+const AUTH_REQUEST_TIMEOUT_MS = 10_000;
+const CSRF_COOKIE_NAME = 'wavelabCsrfToken';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+const readCookie = (name) => {
+  if (typeof document === 'undefined') return '';
+  const prefix = `${encodeURIComponent(name)}=`;
+  const match = document.cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  return match ? decodeURIComponent(match.slice(prefix.length)) : '';
+};
+
+export const withCsrfHeader = (headers = {}, method = 'GET') => {
+  const normalizedMethod = String(method || 'GET').toUpperCase();
+  if (['GET', 'HEAD', 'OPTIONS'].includes(normalizedMethod)) return headers;
+  const token = readCookie(CSRF_COOKIE_NAME);
+  return token ? { ...headers, [CSRF_HEADER_NAME]: token } : headers;
+};
 
 let refreshInFlight = null;
 let authCheckInFlight = null;
@@ -37,8 +57,22 @@ const unavailableAuthState = () => ({
   unavailable: true,
 });
 
+const fetchAuthRequest = async (url, options = {}) => {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), AUTH_REQUEST_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
+};
+
 const fetchAuthCheck = async () => {
-  const res = await fetch(`${AUTH_API_BASE_URL}/check`, {
+  const res = await fetchAuthRequest(`${AUTH_API_BASE_URL}/check`, {
     method: 'GET',
     credentials: 'include',
   });
@@ -56,7 +90,7 @@ const isTransientAuthStatus = (status) => status === 429 || status >= 500;
 export const sendOtp = async ({ email }) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/otp/send`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withCsrfHeader({ 'Content-Type': 'application/json' }, 'POST'),
     body: JSON.stringify({ email }),
     credentials: 'include',
   });
@@ -72,7 +106,7 @@ export const sendOtp = async ({ email }) => {
 export const verifyOtp = async ({ email, otp }) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/otp/verify`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withCsrfHeader({ 'Content-Type': 'application/json' }, 'POST'),
     body: JSON.stringify({ email, otp }),
     credentials: 'include',
   });
@@ -107,7 +141,7 @@ export const resendVerificationEmail = async (email) => {
   try {
     response = await fetch(`${AUTH_API_BASE_URL}/resend-verification`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withCsrfHeader({ 'Content-Type': 'application/json' }, 'POST'),
       body: JSON.stringify({ email }),
       credentials: 'include',
     });
@@ -127,7 +161,7 @@ export const resendVerificationEmail = async (email) => {
 export const registerUser = async (userData) => {
   const response = await fetch(`${AUTH_API_BASE_URL}/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withCsrfHeader({ 'Content-Type': 'application/json' }, 'POST'),
     body: JSON.stringify(userData),
   });
 
@@ -143,7 +177,7 @@ export const loginUser = async (credentials) => {
   try {
     const response = await fetch(`${AUTH_API_BASE_URL}/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: withCsrfHeader({ 'Content-Type': 'application/json' }, 'POST'),
       body: JSON.stringify(credentials),
       credentials: 'include',
     });
@@ -167,11 +201,14 @@ export const refreshAccessToken = async () => {
 
   refreshInFlight = (async () => {
     try {
-      const response = await fetch(`${AUTH_API_BASE_URL}/refresh-token`, {
+      const response = await fetchAuthRequest(`${AUTH_API_BASE_URL}/refresh-token`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: withCsrfHeader(
+          {
+            'Content-Type': 'application/json',
+          },
+          'POST'
+        ),
         credentials: 'include',
       });
 
@@ -254,9 +291,12 @@ export const fetchWithAuth = async (url, options = {}) => {
   const request = () =>
     fetch(url, {
       ...options,
-      headers: {
-        ...options.headers,
-      },
+      headers: withCsrfHeader(
+        {
+          ...options.headers,
+        },
+        options.method
+      ),
       credentials: 'include',
     });
 
@@ -279,6 +319,7 @@ export const logoutUser = async () => {
     const response = await fetch(`${AUTH_API_BASE_URL}/logout`, {
       method: 'POST',
       credentials: 'include',
+      headers: withCsrfHeader({}, 'POST'),
     });
 
     clearLegacyClientAuthStorage();

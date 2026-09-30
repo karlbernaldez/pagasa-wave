@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import User from '../models/User.js';
+import Session from '../models/Session.js';
+import TrustedDevice from '../models/TrustedDevice.js';
 import { updateUserDetails } from '../controllers/userController.js';
 
 function makeResponse() {
@@ -39,11 +41,15 @@ async function withUserMocks(mocks, work) {
     findOne: User.findOne,
     findById: User.findById,
     findOneAndUpdate: User.findOneAndUpdate,
+    sessionUpdateMany: Session.updateMany,
+    trustedDeviceUpdateMany: TrustedDevice.updateMany,
   };
 
   User.findOne = mocks.findOne ?? originals.findOne;
   User.findById = mocks.findById ?? originals.findById;
   User.findOneAndUpdate = mocks.findOneAndUpdate ?? originals.findOneAndUpdate;
+  Session.updateMany = mocks.sessionUpdateMany ?? (async () => ({ modifiedCount: 1 }));
+  TrustedDevice.updateMany = mocks.trustedDeviceUpdateMany ?? (async () => ({ modifiedCount: 1 }));
 
   try {
     await work();
@@ -51,6 +57,8 @@ async function withUserMocks(mocks, work) {
     User.findOne = originals.findOne;
     User.findById = originals.findById;
     User.findOneAndUpdate = originals.findOneAndUpdate;
+    Session.updateMany = originals.sessionUpdateMany;
+    TrustedDevice.updateMany = originals.trustedDeviceUpdateMany;
   }
 }
 

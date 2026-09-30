@@ -34,11 +34,15 @@ test('permission catalog exposes unique stable canonical permission keys', () =>
   assert.equal(new Set(PERMISSION_KEYS).size, PERMISSION_KEYS.length);
   assert.ok(PERMISSION_KEYS.includes('forecast.view'));
   assert.ok(PERMISSION_KEYS.includes('calendar.view'));
+  assert.ok(PERMISSION_KEYS.includes('calendar.create'));
+  assert.ok(PERMISSION_KEYS.includes('calendar.edit'));
+  assert.ok(PERMISSION_KEYS.includes('calendar.delete'));
   assert.equal(PERMISSION_KEYS.includes('projects.view'), false);
   assert.equal(PERMISSION_KEYS.includes('projects.view_own'), false);
   assert.ok(PERMISSION_KEYS.includes('roles.edit'));
   assert.ok(PERMISSION_KEYS.includes('wave_models.delete_package'));
   assert.ok(PERMISSION_KEYS.includes('settings_map_view.manage'));
+  assert.ok(PERMISSION_KEYS.includes('settings_review_checklist.manage'));
   assert.ok(PERMISSION_KEYS.includes('analytics_forecast.view'));
   assert.ok(PERMISSION_KEYS.includes('analytics.export'));
 });
@@ -112,14 +116,22 @@ test('broad settings permissions imply child capabilities without sibling escala
   assert.ok(fullSettings.has('settings.view'));
   assert.ok(fullSettings.has('settings_schedule.manage'));
   assert.ok(fullSettings.has('settings_map_view.manage'));
+  assert.ok(fullSettings.has('settings_review_checklist.manage'));
   assert.ok(fullSettings.has('settings_public_contact.manage'));
   assert.ok(fullSettings.has('settings_public_contact.view'));
 
   const mapOnly = new Set(normalizePermissionKeys(['settings_map_view.manage']));
   assert.ok(mapOnly.has('settings_map_view.view'));
   assert.equal(mapOnly.has('settings_schedule.view'), false);
+  assert.equal(mapOnly.has('settings_review_checklist.view'), false);
   assert.equal(mapOnly.has('settings_public_contact.manage'), false);
   assert.equal(mapOnly.has('settings.view'), false);
+
+  const checklistOnly = new Set(normalizePermissionKeys(['settings_review_checklist.manage']));
+  assert.ok(checklistOnly.has('settings_review_checklist.view'));
+  assert.equal(checklistOnly.has('settings_review_targets.view'), false);
+  assert.equal(checklistOnly.has('settings_map_view.manage'), false);
+  assert.equal(checklistOnly.has('settings.view'), false);
 });
 
 test('broad analytics view implies scoped analytics views without unrelated permissions', () => {
@@ -151,6 +163,24 @@ test('analytics export is additive and never widens subsection visibility', () =
   assert.equal(forecastExport.has('analytics_users.view'), false);
   assert.equal(forecastExport.has('analytics_system.view'), false);
   assert.equal(forecastExport.has('analytics.view'), false);
+});
+
+test('calendar mutation permissions imply calendar view without sibling escalation', () => {
+  const creator = new Set(normalizePermissionKeys(['calendar.create']));
+  assert.ok(creator.has('calendar.create'));
+  assert.ok(creator.has('calendar.view'));
+  assert.equal(creator.has('calendar.edit'), false);
+  assert.equal(creator.has('calendar.delete'), false);
+
+  const editor = new Set(normalizePermissionKeys(['calendar.edit']));
+  assert.ok(editor.has('calendar.edit'));
+  assert.ok(editor.has('calendar.view'));
+  assert.equal(editor.has('calendar.create'), false);
+
+  const deleter = new Set(normalizePermissionKeys(['calendar.delete']));
+  assert.ok(deleter.has('calendar.delete'));
+  assert.ok(deleter.has('calendar.view'));
+  assert.equal(deleter.has('calendar.edit'), false);
 });
 
 test('administrator default role keeps canonical catalog plus legacy view-all compatibility', () => {

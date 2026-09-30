@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { normalizeEmail } from '#controllers/auth/utils/validators';
 import { finalizeLoginUser } from '#controllers/auth/login/loginFinalization';
 import { issueTokens } from './_helpers.js';
+import { issueTrustedDevice } from '#controllers/auth/utils/trustedDevice';
 import { sendOtpEmail } from '#services/email/sendOtpEmail';
 import { createAuditLog } from '#services/auditLog';
 import { logger } from '#utils/logger';
@@ -49,45 +50,6 @@ const PENDING_EXPIRY_MS = 10 * 60 * 1_000;
 const OTP_EXPIRY_MS = 5 * 60 * 1_000;
 const MAX_VERIFY_ATTEMPTS = 5;
 const MAX_SEND_PER_WINDOW = 3;
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Trusted device detection
-//
-// A device is considered "trusted" when BOTH of the following match:
-//   1. Same /24 subnet (first 3 octets of IPv4) — tolerates minor ISP changes
-//      while still blocking logins from a different network entirely.
-//   2. Identical User-Agent string — same browser + OS combination.
-//
-// This is a lightweight heuristic, not cryptographic proof.  For stricter
-// requirements, replace with a signed device-fingerprint cookie.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Returns the /24 prefix of an IPv4 address, or the full string for IPv6.
- * "192.168.1.42" → "192.168.1"
- */
-const ipPrefix = (ip = '') => {
-  const parts = ip.split('.');
-  return parts.length === 4 ? parts.slice(0, 3).join('.') : ip;
-};
-
-/**
- * Returns true when the current request looks like the same device that last
- * logged in successfully.
- *
- * @param {string} currentIP
- * @param {string} currentUA
- * @param {string|null} storedIP   - user.lastLoginIP from DB
- * @param {string|null} storedUA   - user.lastLoginUserAgent from DB
- */
-export const isTrustedDevice = (currentIP, currentUA, storedIP, storedUA) => {
-  if (!storedIP || !storedUA) return false; // no prior login recorded
-
-  const sameSubnet = ipPrefix(currentIP) === ipPrefix(storedIP);
-  const sameAgent = currentUA === storedUA;
-
-  return sameSubnet && sameAgent;
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Crypto helpers
@@ -287,6 +249,7 @@ export const verifyOtp = async (req, res) => {
     }
 
     await issueTokens(user, req, res);
+    await issueTrustedDevice(user, req, res);
 
     logger.info('[OTP] Login success', { userId: user._id, email, ip: currentIP });
 

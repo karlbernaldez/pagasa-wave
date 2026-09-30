@@ -117,10 +117,6 @@ const CHART_METADATA = {
   },
 };
 
-function normalizeOperationsSettings(settings = {}) {
-  return { ...(settings || {}) };
-}
-
 function formatForecastDate(value) {
   if (!value) return 'Today';
   const date = new Date(value);
@@ -402,7 +398,14 @@ function NextActionCard({
   );
 }
 
-function ChartCard({ chart, packageData, isDarkMode, onOpen, sequenceNumber }) {
+function ChartCard({
+  chart,
+  packageData,
+  isDarkMode,
+  onOpen,
+  sequenceNumber,
+  collaborationPresenceMessage,
+}) {
   const chartType = chart?.chartType;
   const completion = getChartCompletion(packageData, chartType);
   const projectId = getChartProjectId(chart);
@@ -509,6 +512,13 @@ function ChartCard({ chart, packageData, isDarkMode, onOpen, sequenceNumber }) {
             <CheckCircle2 className="mt-0.5 shrink-0" size={14} aria-hidden="true" />
             <span>Readiness checkpoint: {checkpointText}</span>
           </p>
+          {hasActiveEditors && collaborationPresenceMessage && (
+            <p
+              className={`mt-2 text-xs font-semibold leading-5 ${isDarkMode ? 'text-amber-200' : 'text-amber-700'}`}
+            >
+              {collaborationPresenceMessage}
+            </p>
+          )}
         </div>
 
         <div
@@ -754,10 +764,6 @@ export default function ForecasterProjectLibraryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const operationsSettings = useMemo(
-    () => normalizeOperationsSettings(workspaceSettings.operations),
-    [workspaceSettings.operations]
-  );
   const completion = useMemo(() => getCompletion(packageData), [packageData]);
   const packageId = getPackageId(packageData);
   const orderedCharts = useMemo(
@@ -885,10 +891,11 @@ export default function ForecasterProjectLibraryPage() {
             <h1
               className={`text-2xl font-black tracking-tight sm:text-3xl ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}
             >
-              Current Forecast Package
+              {workspaceSettings.workspaceWelcomeTitle || 'Current Forecast Package'}
             </h1>
             <p className={`mt-1 text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-              Complete the daily forecast sequence from analysis through the 48-hour outlook.
+              {workspaceSettings.workspaceWelcomeDescription ||
+                'Complete the daily forecast sequence from analysis through the 48-hour outlook.'}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -972,7 +979,7 @@ export default function ForecasterProjectLibraryPage() {
             {isEditable && (
               <ForecastReminderCard
                 packageData={packageData}
-                settings={operationsSettings}
+                settings={workspaceSettings}
                 isDarkMode={isDarkMode}
               />
             )}
@@ -983,6 +990,19 @@ export default function ForecasterProjectLibraryPage() {
               isDarkMode={isDarkMode}
               pendingRevisionChartTypes={pendingRevisionChartTypes}
             />
+
+            {isEditable && completion.isComplete && workspaceSettings.qaChecklistReminder && (
+              <section
+                className={`rounded-2xl border px-4 py-3 text-sm font-semibold leading-6 ${
+                  isDarkMode
+                    ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100'
+                    : 'border-cyan-200 bg-cyan-50 text-cyan-800'
+                }`}
+              >
+                <span className="font-black">Pre-submission QA: </span>
+                {workspaceSettings.qaChecklistReminder}
+              </section>
+            )}
 
             <section>
               <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-4">
@@ -1007,6 +1027,7 @@ export default function ForecasterProjectLibraryPage() {
                     isEditable={isEditable}
                     onOpen={(projectId) => navigate(`/studio/${projectId}`)}
                     sequenceNumber={index + 1}
+                    collaborationPresenceMessage={workspaceSettings.collaborationPresenceMessage}
                   />
                 ))}
               </div>

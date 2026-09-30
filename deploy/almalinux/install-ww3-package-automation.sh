@@ -20,7 +20,8 @@ id wavelab >/dev/null 2>&1 || { echo "The wavelab account does not exist." >&2; 
 install -d -m 0755 /etc/wavelab
 install -d -o wavelab -g wavelab -m 0755 \
   "$WAVETILES_ROOT/normalized/WW3" \
-  "$WAVETILES_ROOT/.normalized-product-stage"
+  "$WAVETILES_ROOT/.normalized-product-stage" \
+  "$WAVETILES_ROOT/.normalized-product-stage/.history"
 
 if [[ ! -e "$ENV_FILE" ]]; then
   install -o root -g root -m 0600 "$DEPLOY_ROOT/ww3-package-builder.env.example" "$ENV_FILE"

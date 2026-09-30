@@ -5,6 +5,7 @@ import {
   buildUserAnalyticsExportRows,
   USER_ANALYTICS_EXPORT_HEADERS,
 } from '../utils/analyticsSanitizers.js';
+import { toCsv } from '../utils/csv.js';
 
 test('user analytics CSV export is aggregate-only', () => {
   assert.deepEqual([...USER_ANALYTICS_EXPORT_HEADERS], ['metric', 'value', 'count']);
@@ -44,4 +45,23 @@ test('aggregate user analytics export has no row-level identity or PII columns',
   ]) {
     assert.equal(headers.includes(blocked), false, `unexpected PII column: ${blocked}`);
   }
+});
+
+test('aggregate user analytics export neutralizes spreadsheet formulas in dynamic labels', () => {
+  const rows = buildUserAnalyticsExportRows({
+    roleRows: [{ _id: '=HYPERLINK("https://example.invalid")', count: 1 }],
+    contributions: {
+      totalEvents: 1,
+      activeContributors: 1,
+      actionMix: [{ action: '+SUM(A1:A2)', count: 1 }],
+      trend: [{ date: '2026-09-15', total: 1 }],
+    },
+  });
+
+  const csv = toCsv(USER_ANALYTICS_EXPORT_HEADERS, rows);
+
+  assert.match(csv, /"'=HYPERLINK/);
+  assert.match(csv, /"'\+SUM\(A1:A2\)"/);
+  assert.equal(csv.includes('"=HYPERLINK'), false);
+  assert.equal(csv.includes('"+SUM(A1:A2)"'), false);
 });

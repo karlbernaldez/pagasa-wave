@@ -14,7 +14,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from source_cycle_policy import preferred_cycle_hour
+from source_cycle_policy import preferred_cycle_hour, source_cycle_date
 
 CYCLE_RE = re.compile(r"\d{10}")
 PACKAGE_DATE_RE = re.compile(r"(\d{4})-?(\d{2})-?(\d{2})")
@@ -41,14 +41,14 @@ def source_cycle_hour() -> int:
 
 def required_source_cycle(package_date: date, cycle_hour: int | None = None) -> str:
     hour = source_cycle_hour() if cycle_hour is None else cycle_hour
-    return (package_date - timedelta(days=1)).strftime("%Y%m%d") + f"{hour:02d}"
+    cycle_date = source_cycle_date(package_date, "WW3", hour)
+    return cycle_date.strftime("%Y%m%d") + f"{hour:02d}"
 
 
 def required_valid_times(package_date: date, cycle_hour: int | None = None) -> tuple[str, ...]:
     hour = source_cycle_hour() if cycle_hour is None else cycle_hour
-    analysis_time = datetime.combine(
-        package_date - timedelta(days=1), datetime.min.time()
-    ).replace(hour=hour)
+    cycle_date = source_cycle_date(package_date, "WW3", hour)
+    analysis_time = datetime.combine(cycle_date, datetime.min.time()).replace(hour=hour)
     return tuple(
         (analysis_time + timedelta(hours=forecast_hour)).strftime("%Y%m%d%H")
         for forecast_hour in REQUIRED_FORECAST_HOURS

@@ -120,6 +120,23 @@ describe('ProtectedRoute session verification', () => {
     expect(screen.queryByText('Approval workspace')).not.toBeInTheDocument();
   });
 
+  it('keeps public auth routes accessible when session verification is unavailable', async () => {
+    checkAuthSession.mockResolvedValue({ authenticated: false, user: null, unavailable: true });
+
+    renderProtectedRoute({
+      element: (
+        <ProtectedRoute requireAuth={false}>
+          <div>Public-only page</div>
+        </ProtectedRoute>
+      ),
+    });
+
+    expect(await screen.findByText('Public-only page')).toBeInTheDocument();
+    expect(screen.queryByText('Unable to verify your session')).not.toBeInTheDocument();
+    expect(setIsLoggedIn).not.toHaveBeenCalledWith(false);
+    expect(setRole).not.toHaveBeenCalledWith(null);
+  });
+
   it('redirects authenticated public-route visitors using canonical permission landing', async () => {
     checkAuthSession.mockResolvedValue({
       authenticated: true,

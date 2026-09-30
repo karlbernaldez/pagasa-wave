@@ -25,6 +25,7 @@ import {
 } from './routes/analyticsCompatibilityRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import calendarRoutes from './routes/calendarRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import ecwamFrameRoutes from './routes/ecwamFrameRoutes.js';
@@ -35,6 +36,7 @@ import pdfRoutes from './routes/pdfRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import reviewChecklistRoutes from './routes/reviewChecklistRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import waveModelCatalogRoutes from './routes/waveModelCatalogRoutes.js';
 import waveModelRoutes from './routes/waveModelRoutes.js';
@@ -112,7 +114,7 @@ const createApp = () => {
   const corsOptions = createCorsOptions();
 
   app.disable('x-powered-by');
-  app.set('trust proxy', 1);
+  app.set('trust proxy', 'loopback');
 
   app.use(helmet());
   app.use(cors(corsOptions));
@@ -151,6 +153,7 @@ const createApp = () => {
   });
 
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/review-checklists', reviewChecklistRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/features', featureRoutes);
   app.use('/api/auth', authRoutes);
@@ -167,6 +170,7 @@ const createApp = () => {
   app.use('/api/users', userAnalyticsCompatibilityRouter);
   app.use('/api/users', userRoutes);
   app.use('/api/pdf', pdfRoutes);
+  app.use('/api/calendar', calendarRoutes);
   app.use('/api/chat', chatRoutes);
 
   app.use('/api/public', express.static(path.join(__dirname, 'public')));
@@ -206,7 +210,10 @@ const getPort = () => {
   return port;
 };
 
-const listen = (server, port) =>
+const getBindHost = () =>
+  String(process.env.BIND_HOST || (isProduction ? '127.0.0.1' : '0.0.0.0')).trim();
+
+const listen = (server, port, host) =>
   new Promise((resolve, reject) => {
     const onError = (error) => {
       server.off('listening', onListening);
@@ -220,7 +227,7 @@ const listen = (server, port) =>
 
     server.once('error', onError);
     server.once('listening', onListening);
-    server.listen(port);
+    server.listen(port, host);
   });
 
 const startServer = async () => {
@@ -241,11 +248,13 @@ const startServer = async () => {
   setIo(io);
 
   const port = getPort();
+  const host = getBindHost();
 
-  await listen(httpServer, port);
+  await listen(httpServer, port, host);
 
   logger.info('WaveLab API started', {
     port,
+    host,
     environment: process.env.NODE_ENV ?? 'development',
     dnsServers: isProduction ? undefined : dns.getServers(),
   });

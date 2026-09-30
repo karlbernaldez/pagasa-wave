@@ -71,18 +71,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
-      - name: Enable package manager
-        run: corepack enable
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install frontend dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci --legacy-peer-deps
+
+      - name: Audit high-severity frontend dependencies
+        run: npm audit --audit-level=high
 
       - name: Run frontend tests
-        run: pnpm test
+        run: npm test
 
       - name: Build frontend
-        run: pnpm build
+        run: npm run build
 
   backend-validation:
     name: Backend tests and workflows

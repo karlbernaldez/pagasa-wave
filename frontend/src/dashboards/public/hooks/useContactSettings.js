@@ -8,21 +8,40 @@ const useContactSettings = () => {
   const [settings, setSettings] = useState(contactCache || DEFAULT_CONTACT);
 
   useEffect(() => {
-    if (contactCache) return;
+    let mounted = true;
 
-    const fetchSettings = async () => {
+    const fetchSettings = async ({ force = false } = {}) => {
+      if (contactCache && !force) {
+        if (mounted) setSettings((prev) => ({ ...prev, ...contactCache }));
+        return;
+      }
+
       try {
         const data = await getSettings('contact');
         if (data && Object.keys(data).length > 0) {
           contactCache = data;
-          setSettings(prev => ({ ...prev, ...data }));
+          if (mounted) setSettings((prev) => ({ ...prev, ...data }));
         }
       } catch (err) {
         console.warn('[useContactSettings] Using defaults:', err.message);
       }
     };
 
-    fetchSettings();
+    void fetchSettings({ force: true });
+
+    const handleSettingsUpdate = (event) => {
+      if (['contact', 'admin.settings.contact'].includes(event.detail?.key)) {
+        contactCache = null;
+        void fetchSettings({ force: true });
+      }
+    };
+
+    window.addEventListener('wavelab:settings-updated', handleSettingsUpdate);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('wavelab:settings-updated', handleSettingsUpdate);
+    };
   }, []);
 
   return settings;

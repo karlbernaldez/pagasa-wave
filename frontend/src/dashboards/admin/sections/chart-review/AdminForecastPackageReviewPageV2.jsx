@@ -18,6 +18,8 @@ import {
 import Button from '@/components/ui/Button';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import ForecastPackageCard from './ForecastPackageCard';
+import { PackageSummaryModal } from '@/features/forecasts/components/ForecastPackageCard';
+import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 import ProjectReviewModal from '@/features/projects/components/ProjectReviewModal';
 import AdminDailyPackageFocus from '@/features/projects/components/project-library/AdminDailyPackageFocus';
 import ProjectPagination from '@/features/projects/components/project-library/ProjectPagination';
@@ -30,8 +32,6 @@ import {
 } from '@/features/projects/utils/forecastPackageGrouping';
 
 const PAGE_SIZE = 12;
-const PROJECT_APPROVED_STATUSES = ['Approved', 'Published'];
-const PACKAGE_AUTO_APPROVE_STATUSES = ['Under Review', 'Revision Requested'];
 const getId = (item) => item?._id || item?.id;
 
 function packageStats(packages, total) {
@@ -86,32 +86,6 @@ function filterPackages(packages, search, typeFilter) {
   });
 }
 
-function getPackageContainingProject(packages, projectId) {
-  return packages.find((forecastPackage) =>
-    (forecastPackage.charts || []).some((chart) => getId(chart.project) === projectId)
-  );
-}
-
-function mergeApprovedProjectIntoPackage(forecastPackage, updatedProject) {
-  const updatedProjectId = getId(updatedProject);
-  return {
-    ...forecastPackage,
-    charts: (forecastPackage?.charts || []).map((chart) =>
-      getId(chart.project) === updatedProjectId
-        ? { ...chart, project: { ...chart.project, ...updatedProject } }
-        : chart
-    ),
-  };
-}
-
-function isPackageReadyForApproval(forecastPackage) {
-  const charts = forecastPackage?.charts || [];
-  return (
-    charts.length > 0 &&
-    charts.every((chart) => PROJECT_APPROVED_STATUSES.includes(chart.project?.status))
-  );
-}
-
 function getEmptyStateCopy({ hasFilters }) {
   if (hasFilters) {
     return {
@@ -143,6 +117,8 @@ function StateCard({ children, isDarkMode }) {
 export default function AdminForecastPackageReviewPageV2() {
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const { rawUser } = useCurrentDashboardUser();
+  const permissions = rawUser?.permissions || [];
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -151,8 +127,10 @@ export default function AdminForecastPackageReviewPageV2() {
   const [sortBy, setSortBy] = useState('updatedAt');
   const [sortDir, setSortDir] = useState('desc');
   const [reviewProject, setReviewProject] = useState(null);
+  const [reviewPackage, setReviewPackage] = useState(null);
   const [busyReview, setBusyReview] = useState(false);
   const [publishingPackageId, setPublishingPackageId] = useState(null);
+  const [approvingPackageId, setApprovingPackageId] = useState(null);
   const [feedbackError, setFeedbackError] = useState('');
 
   const query = useQuery({
@@ -257,24 +235,28 @@ export default function AdminForecastPackageReviewPageV2() {
     }
   };
 
-  const approvePackageIfAllChartsApproved = async (updatedProject) => {
-    const projectId = getId(updatedProject);
-    if (!projectId || updatedProject?.status !== 'Approved') return;
+  const approvePackage = async (forecastPackage) => {
+    setFeedbackError('');
+    const packageId = getId(forecastPackage);
+    if (!packageId) return;
 
-    const matchingPackage = getPackageContainingProject(packages, projectId);
-    if (!matchingPackage || !PACKAGE_AUTO_APPROVE_STATUSES.includes(matchingPackage.status)) return;
-
-    const nextPackage = mergeApprovedProjectIntoPackage(matchingPackage, updatedProject);
-    if (!isPackageReadyForApproval(nextPackage)) return;
-
-    await approveForecastPackage(getId(matchingPackage));
+    setApprovingPackageId(packageId);
+    try {
+      await approveForecastPackage(packageId);
+      await query.refetch();
+      setReviewPackage((current) =>
+        getId(current) === packageId ? { ...current, status: 'Approved' } : current
+      );
+    } catch (error) {
+      console.error('Failed to approve forecast package:', error);
+      setFeedbackError(error?.message || 'Failed to approve forecast package.');
+    } finally {
+      setApprovingPackageId(null);
+    }
   };
 
   const onActionComplete = async (updatedProject) => {
-    if (updatedProject) {
-      setReviewProject(updatedProject);
-      await approvePackageIfAllChartsApproved(updatedProject);
-    }
+    if (updatedProject) setReviewProject(updatedProject);
     await query.refetch();
   };
 
@@ -300,6 +282,9 @@ export default function AdminForecastPackageReviewPageV2() {
             isDarkMode={isDarkMode}
             packages={packages}
             onOpenChart={openChartForReview}
+            onOpenPackage={setReviewPackage}
+            onPublishPackage={publishPackage}
+            publishingPackageId={publishingPackageId}
             total={total}
           />
         )}
@@ -384,7 +369,9 @@ export default function AdminForecastPackageReviewPageV2() {
                 isDarkMode={isDarkMode}
                 onOpenChart={openChartForReview}
                 onPublishPackage={publishPackage}
+                onApprovePackage={approvePackage}
                 publishingPackageId={publishingPackageId}
+                approvingPackageId={approvingPackageId}
               />
             ))}
           </div>
@@ -404,6 +391,21 @@ export default function AdminForecastPackageReviewPageV2() {
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 text-sm font-bold text-white backdrop-blur-sm">
           Starting review...
         </div>
+      )}
+
+      {reviewPackage && (
+        <PackageSummaryModal
+          forecastPackage={reviewPackage}
+          isDarkMode={isDarkMode}
+          isReviewablePackage={['Submitted', 'Under Review', 'Revision Requested'].includes(
+            reviewPackage.status
+          )}
+          onClose={() => setReviewPackage(null)}
+          onOpenChart={openChartForReview}
+          onApprovePackage={approvePackage}
+          approvingPackageId={approvingPackageId}
+          permissions={permissions}
+        />
       )}
 
       <ProjectReviewModal

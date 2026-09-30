@@ -233,6 +233,16 @@ export async function syncPackageStatusFromCharts(forecastPackage, userId) {
   const nextStatus = deriveForecastPackageStatusFromCharts(forecastPackage);
   if (!nextStatus || nextStatus === previousStatus) return forecastPackage;
 
+  // Approval and publication are explicit package decisions. Never infer either
+  // terminal state from child chart status because that would bypass checklist
+  // evidence and the package-level permission gates.
+  if (
+    nextStatus === FORECAST_PACKAGE_STATUS.APPROVED ||
+    nextStatus === FORECAST_PACKAGE_STATUS.PUBLISHED
+  ) {
+    return forecastPackage;
+  }
+
   const update = {
     $set: {
       status: nextStatus,

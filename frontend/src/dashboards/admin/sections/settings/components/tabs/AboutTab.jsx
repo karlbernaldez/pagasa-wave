@@ -1,201 +1,92 @@
-import {
-  Star, BarChart2, Eye, Target, Layers,
-  Clock, User, Link, Hash, AlignLeft, Zap,
-  HelpCircle
-} from 'lucide-react';
+import { BarChart2, Building2, HelpCircle, Link, Star, Target, User } from 'lucide-react';
 
 import Accordion from '../ui/Accordion';
 import { Field, TextareaField } from '../ui/FormFields';
 import { ArrayRow, AddButton } from '../ui/ArrayEditorRow';
 import { SortableDnD } from '../ui/Sortable';
 
-/* ─── tiny local helpers ──────────────────────────────────── */
-
-const SectionLabel = ({ children, dark }) => (
-  <p className={`text-[10px] font-black uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5 ${dark ? 'text-slate-400' : 'text-slate-500'
-    }`}>
-    <span className={`inline-block w-4 h-px ${dark ? 'bg-slate-600' : 'bg-slate-300'}`} />
-    {children}
-    <span className={`flex-1 h-px ${dark ? 'bg-slate-700' : 'bg-slate-200'}`} />
-  </p>
-);
-
-const InfoPanel = ({ dark, children }) => (
-  <div className={`rounded-2xl border p-4 transition-colors ${dark
-      ? 'border-slate-700/60 bg-slate-800/40 backdrop-blur-sm'
-      : 'border-slate-200 bg-slate-50/80'
-    }`}>
-    {children}
-  </div>
-);
-
-const AvatarPreview = ({ src, alt, dark }) =>
-  src ? (
-    <div className={`flex items-center gap-3 mt-2 py-2 px-3 rounded-xl border ${dark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white'
-      }`}>
-      <img
-        src={src}
-        alt={alt}
-        className="h-9 w-9 rounded-lg object-cover ring-2 ring-offset-1 ring-slate-400/20"
-        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-      />
-      <div>
-        <p className={`text-xs font-medium ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-          Preview
-        </p>
-        <p className={`text-[10px] truncate max-w-[180px] ${dark ? 'text-slate-500' : 'text-slate-400'}`}>
-          {src}
-        </p>
-      </div>
-    </div>
-  ) : null;
-
-/* ─── main component ──────────────────────────────────────── */
-
-const AboutTab = ({ settings = {}, setSettings, dark }) => {
-
-  const set = (field) => (val) =>
-    setSettings(prev => ({ ...prev, [field]: val }));
+export default function AboutTab({ settings = {}, setSettings, dark }) {
+  const set = (field) => (value) => setSettings((prev) => ({ ...prev, [field]: value }));
 
   const updateArrayItem = (key, id, patch) =>
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
-      [key]: (prev[key] ?? []).map(item =>
-        item.id === id ? { ...item, ...patch } : item
-      )
+      [key]: (prev[key] ?? []).map((item) => (item.id === id ? { ...item, ...patch } : item)),
     }));
 
   const removeArrayItem = (key, id) =>
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
-      [key]: (prev[key] ?? []).filter(item => item.id !== id)
+      [key]: (prev[key] ?? []).filter((item) => item.id !== id),
     }));
 
   const addArrayItem = (key, template) =>
-    setSettings(prev => ({
+    setSettings((prev) => ({
       ...prev,
-      [key]: [...(prev[key] ?? []), { id: crypto.randomUUID(), ...template }]
+      [key]: [...(prev[key] ?? []), { id: crypto.randomUUID(), ...template }],
     }));
 
-  const reorderArray = (key, next) =>
-    setSettings(prev => ({ ...prev, [key]: next }));
+  const reorderArray = (key, next) => setSettings((prev) => ({ ...prev, [key]: next }));
 
   const s = settings || {};
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
+      <div
+        className={`rounded-xl border p-4 text-sm font-semibold leading-6 ${
+          dark
+            ? 'border-cyan-300/20 bg-cyan-400/10 text-cyan-100'
+            : 'border-cyan-100 bg-cyan-50/80 text-cyan-800'
+        }`}
+      >
+        These fields map directly to the current public About page.
+      </div>
 
-      {/* ── 1. TITLE & SUBTITLE ── */}
-      <Accordion icon={Star} title="Title & Subtitle" dark={dark} defaultOpen>
-        <div className="flex flex-col gap-5">
-
-          {/* Hero text fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-            <Field
-              label="Badge Text"
-              value={s.badgeText ?? ''}
-              onChange={set('badgeText')}
-              dark={dark}
-            />
-
-            {/* Title split — mirrors ContactTab pattern */}
-            <div className="sm:col-span-2">
-              <InfoPanel dark={dark}>
-                <SectionLabel dark={dark}>Page Title</SectionLabel>
-
-                {/* Live preview */}
-                {(s.titlePrefix || s.titleHighlight || s.titleSuffix) && (
-                  <p className={`text-sm font-semibold mb-3 leading-snug ${dark ? 'text-slate-300' : 'text-slate-700'
-                    }`}>
-                    {s.titlePrefix && (
-                      <span>{s.titlePrefix} </span>
-                    )}
-                    {s.titleHighlight && (
-                      <span className={`px-1 rounded ${dark
-                          ? 'bg-blue-500/20 text-blue-300'
-                          : 'bg-blue-100 text-blue-700'
-                        }`}>
-                        {s.titleHighlight}
-                      </span>
-                    )}
-                    {s.titleSuffix && (
-                      <span> {s.titleSuffix}</span>
-                    )}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <Field
-                    label="Title Prefix"
-                    value={s.titlePrefix ?? ''}
-                    onChange={set('titlePrefix')}
-                    dark={dark}
-                  />
-                  <Field
-                    label="Title Highlight"
-                    value={s.titleHighlight ?? ''}
-                    onChange={set('titleHighlight')}
-                    dark={dark}
-                  />
-                  <Field
-                    label="Title Suffix"
-                    value={s.titleSuffix ?? ''}
-                    onChange={set('titleSuffix')}
-                    dark={dark}
-                  />
-                </div>
-              </InfoPanel>
-            </div>
-
-            <div className="sm:col-span-2">
-              <TextareaField
-                label="Subtitle / Description"
-                value={s.subtitle ?? ''}
-                onChange={set('subtitle')}
-                rows={3}
+      <Accordion icon={Star} title="Hero Content" dark={dark} defaultOpen>
+        <div className="grid gap-4">
+          <Field label="Page Title" value={s.title ?? ''} onChange={set('title')} dark={dark} />
+          <TextareaField
+            label="Subtitle / Description"
+            value={s.subtitle ?? ''}
+            onChange={set('subtitle')}
+            rows={4}
+            dark={dark}
+          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-3 rounded-xl border border-slate-500/20 p-4">
+              <p className="text-xs font-black uppercase tracking-wide">Contact CTA</p>
+              <Field
+                label="Label"
+                value={s.ctaPrimaryLabel ?? ''}
+                onChange={set('ctaPrimaryLabel')}
+                dark={dark}
+              />
+              <Field
+                label="Link"
+                value={s.ctaPrimaryLink ?? ''}
+                onChange={set('ctaPrimaryLink')}
                 dark={dark}
               />
             </div>
-
-          </div>
-
-          {/* CTA block */}
-          <InfoPanel dark={dark}>
-            <SectionLabel dark={dark}>Call-to-Action Buttons</SectionLabel>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-
-              {/* Primary */}
-              <div className={`rounded-xl p-3 border ${dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white'
-                }`}>
-                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${dark ? 'text-blue-400' : 'text-blue-600'
-                  }`}>Primary</p>
-                <div className="flex flex-col gap-2">
-                  <Field label="Label" value={s.ctaPrimaryLabel ?? ''} onChange={set('ctaPrimaryLabel')} dark={dark} />
-                  <Field label="Link" value={s.ctaPrimaryLink ?? ''} onChange={set('ctaPrimaryLink')} dark={dark} />
-                </div>
-              </div>
-
-              {/* Secondary */}
-              <div className={`rounded-xl p-3 border ${dark ? 'border-slate-700 bg-slate-800/60' : 'border-slate-200 bg-white'
-                }`}>
-                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-2 ${dark ? 'text-slate-400' : 'text-slate-500'
-                  }`}>Secondary</p>
-                <div className="flex flex-col gap-2">
-                  <Field label="Label" value={s.ctaSecondaryLabel ?? ''} onChange={set('ctaSecondaryLabel')} dark={dark} />
-                  <Field label="Link" value={s.ctaSecondaryLink ?? ''} onChange={set('ctaSecondaryLink')} dark={dark} />
-                </div>
-              </div>
-
+            <div className="grid gap-3 rounded-xl border border-slate-500/20 p-4">
+              <p className="text-xs font-black uppercase tracking-wide">Charts CTA</p>
+              <Field
+                label="Label"
+                value={s.ctaSecondaryLabel ?? ''}
+                onChange={set('ctaSecondaryLabel')}
+                dark={dark}
+              />
+              <Field
+                label="Link"
+                value={s.ctaSecondaryLink ?? ''}
+                onChange={set('ctaSecondaryLink')}
+                dark={dark}
+              />
             </div>
-          </InfoPanel>
-
+          </div>
         </div>
       </Accordion>
 
-
-      {/* ── 2. STATS ── */}
       <Accordion icon={BarChart2} title="Stats" count={(s.stats ?? []).length} dark={dark}>
         <div className="flex flex-col gap-3">
           <SortableDnD
@@ -204,131 +95,98 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             onReorder={(next) => reorderArray('stats', next)}
             className="flex flex-col gap-2"
             renderItem={(stat, sortableProps) => (
-              <ArrayRow key={stat.id} onRemove={() => removeArrayItem('stats', stat.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
-                <div className="grid grid-cols-3 gap-3">
-                  <Field label="Number" value={stat.number ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { number: v })} dark={dark} />
-                  <Field label="Label" value={stat.label ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { label: v })} dark={dark} />
-                  <Field label="Sublabel" value={stat.sublabel ?? ''} onChange={(v) => updateArrayItem('stats', stat.id, { sublabel: v })} dark={dark} />
-                </div>
-              </ArrayRow>
-            )}
-          />
-          <AddButton onClick={() => addArrayItem('stats', { number: '', label: '', sublabel: '' })} label="Add Stat" dark={dark} />
-        </div>
-      </Accordion>
-
-
-      {/* ── 3. MISSION & VISION ── */}
-      <Accordion icon={Eye} title="Mission & Vision" count={(s.highlights ?? []).length} dark={dark}>
-        <div className="flex flex-col gap-3">
-          <SortableDnD
-            items={s.highlights ?? []}
-            strategy="list"
-            onReorder={(next) => reorderArray('highlights', next)}
-            className="flex flex-col gap-2"
-            renderItem={(h, sortableProps) => (
-              <ArrayRow key={h.id} onRemove={() => removeArrayItem('highlights', h.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
-                <div className="flex flex-col gap-3">
-                  <Field label="Title" value={h.title ?? ''} onChange={(v) => updateArrayItem('highlights', h.id, { title: v })} dark={dark} />
-                  <TextareaField label="Description" value={h.description ?? ''} onChange={(v) => updateArrayItem('highlights', h.id, { description: v })} rows={3} dark={dark} />
-                </div>
-              </ArrayRow>
-            )}
-          />
-          <AddButton onClick={() => addArrayItem('highlights', { title: '', description: '' })} label="Add Highlight" dark={dark} />
-        </div>
-      </Accordion>
-
-
-      {/* ── 4. PROGRAM OBJECTIVES ── */}
-      <Accordion icon={Target} title="Program Objectives" count={(s.programObjectives ?? []).length} dark={dark}>
-        <div className="flex flex-col gap-3">
-          <SortableDnD
-            items={s.programObjectives ?? []}
-            strategy="list"
-            onReorder={(next) => reorderArray('programObjectives', next)}
-            className="flex flex-col gap-2"
-            renderItem={(obj, sortableProps) => (
-              <ArrayRow key={obj.id} onRemove={() => removeArrayItem('programObjectives', obj.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
-                <div className="flex flex-col gap-3">
-                  <Field label="Title" value={obj.title ?? ''} onChange={(v) => updateArrayItem('programObjectives', obj.id, { title: v })} dark={dark} />
-                  <TextareaField label="Description" value={obj.description ?? ''} onChange={(v) => updateArrayItem('programObjectives', obj.id, { description: v })} rows={2} dark={dark} />
-                </div>
-              </ArrayRow>
-            )}
-          />
-          <AddButton onClick={() => addArrayItem('programObjectives', { title: '', description: '' })} label="Add Objective" dark={dark} />
-        </div>
-      </Accordion>
-
-
-      {/* ── 5. FOCUS AREAS ── */}
-      <Accordion icon={Layers} title="Focus Areas" count={(s.pillars ?? []).length} dark={dark}>
-        <div className="flex flex-col gap-3">
-          <SortableDnD
-            items={s.pillars ?? []}
-            strategy="list"
-            onReorder={(next) => reorderArray('pillars', next)}
-            className="flex flex-col gap-2"
-            renderItem={(pillar, sortableProps) => (
-              <ArrayRow key={pillar.id} onRemove={() => removeArrayItem('pillars', pillar.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
-                <div className="flex flex-col gap-3">
-                  <Field label="Title" value={pillar.title ?? ''} onChange={(v) => updateArrayItem('pillars', pillar.id, { title: v })} dark={dark} />
-                  <TextareaField label="Description" value={pillar.description ?? ''} onChange={(v) => updateArrayItem('pillars', pillar.id, { description: v })} rows={2} dark={dark} />
-                </div>
-              </ArrayRow>
-            )}
-          />
-          <AddButton onClick={() => addArrayItem('pillars', { title: '', description: '' })} label="Add Focus Area" dark={dark} />
-        </div>
-      </Accordion>
-
-
-      {/* ── 6. TIMELINE ── */}
-      <Accordion icon={Clock} title="Timeline" count={(s.milestones ?? []).length} dark={dark}>
-        <div className="flex flex-col gap-3">
-          <SortableDnD
-            items={s.milestones ?? []}
-            strategy="list"
-            onReorder={(next) => reorderArray('milestones', next)}
-            className="flex flex-col gap-2"
-            renderItem={(ms, sortableProps) => (
-              <ArrayRow key={ms.id} onRemove={() => removeArrayItem('milestones', ms.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
-                <div className="flex flex-col gap-3">
-                  <div className="grid grid-cols-1 xs:grid-cols-3 gap-3">
-                    <Field
-                      label="Year / Period"
-                      value={ms.year ?? ''}
-                      onChange={(v) => updateArrayItem('milestones', ms.id, { year: v })}
-                      dark={dark}
-                    />
-                    <div className="xs:col-span-2">
-                      <Field
-                        label="Milestone Title"
-                        value={ms.title ?? ''}
-                        onChange={(v) => updateArrayItem('milestones', ms.id, { title: v })}
-                        dark={dark}
-                      />
-                    </div>
-                  </div>
-                  <TextareaField
+              <ArrayRow
+                key={stat.id}
+                onRemove={() => removeArrayItem('stats', stat.id)}
+                dark={dark}
+                dragHandleProps={sortableProps.dragHandleProps}
+              >
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field
+                    label="Value"
+                    value={stat.number ?? stat.value ?? ''}
+                    onChange={(value) => updateArrayItem('stats', stat.id, { number: value })}
+                    dark={dark}
+                  />
+                  <Field
+                    label="Label"
+                    value={stat.label ?? ''}
+                    onChange={(value) => updateArrayItem('stats', stat.id, { label: value })}
+                    dark={dark}
+                  />
+                  <Field
                     label="Description"
-                    value={ms.description ?? ''}
-                    onChange={(v) => updateArrayItem('milestones', ms.id, { description: v })}
-                    rows={2}
+                    value={stat.sublabel ?? stat.description ?? ''}
+                    onChange={(value) => updateArrayItem('stats', stat.id, { sublabel: value })}
                     dark={dark}
                   />
                 </div>
               </ArrayRow>
             )}
           />
-          <AddButton onClick={() => addArrayItem('milestones', { year: '', title: '', description: '' })} label="Add Milestone" dark={dark} />
+          <AddButton
+            onClick={() => addArrayItem('stats', { number: '', label: '', sublabel: '' })}
+            label="Add Stat"
+            dark={dark}
+          />
         </div>
       </Accordion>
 
+      <Accordion
+        icon={Target}
+        title="Program Objectives"
+        count={(s.programObjectives ?? []).length}
+        dark={dark}
+      >
+        <div className="flex flex-col gap-3">
+          <SortableDnD
+            items={s.programObjectives ?? []}
+            strategy="list"
+            onReorder={(next) => reorderArray('programObjectives', next)}
+            className="flex flex-col gap-2"
+            renderItem={(objective, sortableProps) => (
+              <ArrayRow
+                key={objective.id}
+                onRemove={() => removeArrayItem('programObjectives', objective.id)}
+                dark={dark}
+                dragHandleProps={sortableProps.dragHandleProps}
+              >
+                <div className="grid gap-3">
+                  <Field
+                    label="Title"
+                    value={objective.title ?? ''}
+                    onChange={(value) =>
+                      updateArrayItem('programObjectives', objective.id, { title: value })
+                    }
+                    dark={dark}
+                  />
+                  <TextareaField
+                    label="Description"
+                    value={objective.description ?? ''}
+                    onChange={(value) =>
+                      updateArrayItem('programObjectives', objective.id, { description: value })
+                    }
+                    rows={3}
+                    dark={dark}
+                  />
+                </div>
+              </ArrayRow>
+            )}
+          />
+          <AddButton
+            onClick={() => addArrayItem('programObjectives', { title: '', description: '' })}
+            label="Add Objective"
+            dark={dark}
+          />
+        </div>
+      </Accordion>
 
-      {/* ── 7. LEADERSHIP ── */}
-      <Accordion icon={User} title="Leadership" count={(s.leaders ?? []).length} dark={dark}>
+      <Accordion
+        icon={User}
+        title="Governance / Leadership"
+        count={(s.leaders ?? []).length}
+        dark={dark}
+      >
         <div className="flex flex-col gap-3">
           <SortableDnD
             items={s.leaders ?? []}
@@ -336,25 +194,43 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             onReorder={(next) => reorderArray('leaders', next)}
             className="flex flex-col gap-2"
             renderItem={(leader, sortableProps) => (
-              <ArrayRow key={leader.id} onRemove={() => removeArrayItem('leaders', leader.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
-                <div className="flex flex-col gap-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Field label="Full Name" value={leader.name ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { name: v })} dark={dark} />
-                    <Field label="Role / Title" value={leader.role ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { role: v })} dark={dark} />
-                    <Field label="Avatar URL" value={leader.avatar ?? ''} onChange={(v) => updateArrayItem('leaders', leader.id, { avatar: v })} dark={dark} />
-                  </div>
-                  <AvatarPreview src={leader.avatar} alt={leader.name} dark={dark} />
+              <ArrayRow
+                key={leader.id}
+                onRemove={() => removeArrayItem('leaders', leader.id)}
+                dark={dark}
+                dragHandleProps={sortableProps.dragHandleProps}
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field
+                    label="Name / Area"
+                    value={leader.name ?? ''}
+                    onChange={(value) => updateArrayItem('leaders', leader.id, { name: value })}
+                    dark={dark}
+                  />
+                  <Field
+                    label="Role / Description"
+                    value={leader.role ?? ''}
+                    onChange={(value) => updateArrayItem('leaders', leader.id, { role: value })}
+                    dark={dark}
+                  />
                 </div>
               </ArrayRow>
             )}
           />
-          <AddButton onClick={() => addArrayItem('leaders', { name: '', role: '', avatar: '' })} label="Add Leader" dark={dark} />
+          <AddButton
+            onClick={() => addArrayItem('leaders', { name: '', role: '' })}
+            label="Add Governance Item"
+            dark={dark}
+          />
         </div>
       </Accordion>
 
-
-      {/* ── 8. PARTNER AGENCIES ── */}
-      <Accordion icon={Layers} title="Partner Agencies" count={(s.partners ?? []).length} dark={dark}>
+      <Accordion
+        icon={Building2}
+        title="Partner Agencies"
+        count={(s.partners ?? []).length}
+        dark={dark}
+      >
         <div className="flex flex-col gap-3">
           <SortableDnD
             items={s.partners ?? []}
@@ -362,66 +238,31 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
             onReorder={(next) => reorderArray('partners', next)}
             className="flex flex-col gap-2"
             renderItem={(partner, sortableProps) => (
-              <ArrayRow key={partner.id} onRemove={() => removeArrayItem('partners', partner.id)} dark={dark} dragHandleProps={sortableProps.dragHandleProps}>
-                <div className="flex flex-col gap-3">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <Field label="Agency Name" value={partner.name ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { name: v })} dark={dark} />
-                    <Field label="Logo URL" value={partner.logo ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { logo: v })} dark={dark} />
-                    <Field label="Website" value={partner.link ?? ''} onChange={(v) => updateArrayItem('partners', partner.id, { link: v })} dark={dark} />
-                  </div>
-                  {partner.logo && (
-                    <div className={`flex items-center gap-3 mt-1 py-2 px-3 rounded-xl border ${dark ? 'border-slate-700 bg-slate-900/50' : 'border-slate-200 bg-white'
-                      }`}>
-                      <div className={`flex items-center justify-center h-9 w-16 rounded-lg border overflow-hidden ${dark ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'
-                        }`}>
-                        <img
-                          src={partner.logo}
-                          alt={partner.name}
-                          className="h-8 w-auto max-w-full object-contain"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                        />
-                      </div>
-                      <div>
-                        <p className={`text-xs font-medium ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-                          Logo Preview
-                        </p>
-                        {partner.link && (
-                          <a
-                            href={partner.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`text-[10px] underline underline-offset-2 truncate max-w-[180px] inline-block ${dark ? 'text-blue-400' : 'text-blue-500'
-                              }`}
-                          >
-                            {partner.link}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+              <ArrayRow
+                key={partner.id}
+                onRemove={() => removeArrayItem('partners', partner.id)}
+                dark={dark}
+                dragHandleProps={sortableProps.dragHandleProps}
+              >
+                <Field
+                  label="Agency Name"
+                  value={typeof partner === 'string' ? partner : (partner.name ?? '')}
+                  onChange={(value) => updateArrayItem('partners', partner.id, { name: value })}
+                  dark={dark}
+                />
               </ArrayRow>
             )}
           />
-          <AddButton onClick={() => addArrayItem('partners', { name: '', logo: '', link: '' })} label="Add Partner Agency" dark={dark} />
+          <AddButton
+            onClick={() => addArrayItem('partners', { name: '' })}
+            label="Add Partner Agency"
+            dark={dark}
+          />
         </div>
       </Accordion>
 
-
-      {/* ── 9. FAQ ── */}
       <Accordion icon={HelpCircle} title="FAQ" count={(s.faqs ?? []).length} dark={dark}>
         <div className="flex flex-col gap-3">
-
-          {/* Helper hint */}
-          <div className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border text-[10px] leading-relaxed ${
-            dark
-              ? 'border-slate-700/60 bg-slate-800/40 text-slate-400'
-              : 'border-slate-200 bg-slate-50 text-slate-500'
-          }`}>
-            <HelpCircle size={12} className="flex-shrink-0 mt-0.5 opacity-60" />
-            Items are displayed as an accordion on the About page. Drag to reorder.
-          </div>
-
           <SortableDnD
             items={s.faqs ?? []}
             strategy="list"
@@ -434,17 +275,17 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
                 dark={dark}
                 dragHandleProps={sortableProps.dragHandleProps}
               >
-                <div className="flex flex-col gap-3">
+                <div className="grid gap-3">
                   <Field
                     label="Question"
                     value={faq.question ?? ''}
-                    onChange={(v) => updateArrayItem('faqs', faq.id, { question: v })}
+                    onChange={(value) => updateArrayItem('faqs', faq.id, { question: value })}
                     dark={dark}
                   />
                   <TextareaField
                     label="Answer"
                     value={faq.answer ?? ''}
-                    onChange={(v) => updateArrayItem('faqs', faq.id, { answer: v })}
+                    onChange={(value) => updateArrayItem('faqs', faq.id, { answer: value })}
                     rows={3}
                     dark={dark}
                   />
@@ -460,34 +301,16 @@ const AboutTab = ({ settings = {}, setSettings, dark }) => {
         </div>
       </Accordion>
 
-
-      {/* ── 10. BOTTOM CTA ── */}
-      <Accordion icon={Link} title="Bottom Call-to-Action" dark={dark}>
-        <div className="flex flex-col gap-4">
-
-          <Field label="CTA Title" value={s.ctaTitle ?? ''} onChange={set('ctaTitle')} dark={dark} />
-
-          <TextareaField
-            label="CTA Description"
-            value={s.ctaDescription ?? ''}
-            onChange={set('ctaDescription')}
-            rows={3}
-            dark={dark}
-          />
-
-          <InfoPanel dark={dark}>
-            <SectionLabel dark={dark}>Button</SectionLabel>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Field label="Label" value={s.ctaButtonLabel ?? ''} onChange={set('ctaButtonLabel')} dark={dark} />
-              <Field label="Link" value={s.ctaButtonLink ?? ''} onChange={set('ctaButtonLink')} dark={dark} />
-            </div>
-          </InfoPanel>
-
-        </div>
-      </Accordion>
-
+      <div
+        className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-xs font-semibold ${
+          dark
+            ? 'border-white/10 bg-white/[0.03] text-slate-400'
+            : 'border-slate-200 bg-slate-50 text-slate-500'
+        }`}
+      >
+        <Link size={14} className="mt-0.5 shrink-0" />
+        Changes are reflected when the public About page next loads.
+      </div>
     </div>
   );
-};
-
-export default AboutTab;
+}

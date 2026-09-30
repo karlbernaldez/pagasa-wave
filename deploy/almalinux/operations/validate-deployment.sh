@@ -14,6 +14,7 @@ EXPECTED_BRANCH="${EXPECTED_BRANCH:-main}"
 BACKEND_URL="${BACKEND_URL:-http://127.0.0.1:5000/status}"
 FRONTEND_URL="${FRONTEND_URL:-http://127.0.0.1}"
 REQUIRE_PREFLIGHT="${REQUIRE_PREFLIGHT:-1}"
+PIPELINE_HISTORY_ROOT="${PIPELINE_HISTORY_ROOT:-$APP_ROOT/wavetiles/.normalized-product-stage/.history}"
 
 wavelab_require_root
 for command_name in git curl systemctl journalctl node; do
@@ -127,6 +128,70 @@ if [[ -f "$BACKEND_ENV" ]]; then
 else
   backend_environment="unavailable"
   record_check backend_env_file "Backend environment file" FAIL missing
+fi
+
+if [[ -d "$PIPELINE_HISTORY_ROOT" ]]; then
+  if sudo -u "$APP_USER" test -r "$PIPELINE_HISTORY_ROOT" && \
+    sudo -u "$APP_USER" test -w "$PIPELINE_HISTORY_ROOT"; then
+    record_check pipeline_history_access "Pipeline telemetry storage" PASS "read/write"
+  else
+    record_check pipeline_history_access "Pipeline telemetry storage" FAIL "not readable/writable by $APP_USER"
+  fi
+
+  telemetry_probe="$PIPELINE_HISTORY_ROOT/.deployment-write-probe"
+  if sudo -u "$APP_USER" sh -c "printf '%s\n' probe > '$telemetry_probe'" 2>/dev/null && \
+    sudo -u "$APP_USER" rm -f "$telemetry_probe" 2>/dev/null; then
+    record_check pipeline_history_write "Pipeline telemetry write probe" PASS "append path usable"
+  else
+    rm -f "$telemetry_probe" 2>/dev/null || true
+    record_check pipeline_history_write "Pipeline telemetry write probe" FAIL "unable to create/remove probe"
+  fi
+
+  telemetry_meta="$(
+    sudo -u "$APP_USER" node - "$PIPELINE_HISTORY_ROOT" <<'NODE' 2>/dev/null || true
+const fs = require('fs');
+const path = require('path');
+const root = process.argv[2];
+let files = 0;
+let records = 0;
+let invalid = 0;
+let bytes = 0;
+for (const name of fs.readdirSync(root).filter((entry) => entry.endsWith('.jsonl'))) {
+  const target = path.join(root, name);
+  const raw = fs.readFileSync(target, 'utf8');
+  files += 1;
+  bytes += fs.statSync(target).size;
+  for (const line of raw.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    try {
+      const row = JSON.parse(line);
+      if (row?.eventType === 'pipeline_run' && row?.runId && row?.model && row?.outcome) {
+        records += 1;
+      } else {
+        invalid += 1;
+      }
+    } catch {
+      invalid += 1;
+    }
+  }
+}
+process.stdout.write([files, records, invalid, bytes].join('|'));
+NODE
+  )"
+  IFS='|' read -r telemetry_files telemetry_records telemetry_invalid telemetry_bytes <<< "$telemetry_meta"
+  telemetry_files="${telemetry_files:-0}"
+  telemetry_records="${telemetry_records:-0}"
+  telemetry_invalid="${telemetry_invalid:-0}"
+  telemetry_bytes="${telemetry_bytes:-0}"
+
+  if [[ "$telemetry_invalid" -eq 0 ]]; then
+    record_check pipeline_history_integrity "Pipeline telemetry integrity" PASS "$telemetry_records records in $telemetry_files file(s)"
+  else
+    record_check pipeline_history_integrity "Pipeline telemetry integrity" WARN "$telemetry_invalid malformed record(s)"
+  fi
+  record_check pipeline_history_size "Pipeline telemetry storage size" PASS "${telemetry_bytes} bytes"
+else
+  record_check pipeline_history_access "Pipeline telemetry storage" FAIL "missing: $PIPELINE_HISTORY_ROOT"
 fi
 
 service_units=(wavelab-backend.service nginx.service redis.service)

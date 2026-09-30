@@ -6,9 +6,16 @@ import { requireInternalChatAccess } from '../middleware/internalChatMiddleware.
 import { resolveChatTier } from '../chat/services/chatService.js';
 import { csrfProtection } from '../middleware/csrfMiddleware.js';
 
+process.env.CSRF_SECRET ||= 'chat-access-test-csrf-secret';
+
 const makeRes = () => ({
   statusCode: null,
   body: null,
+  cookies: [],
+  cookie(name, value, options) {
+    this.cookies.push({ name, value, options });
+    return this;
+  },
   status(code) {
     this.statusCode = code;
     return this;
@@ -101,6 +108,7 @@ test('csrf protection allows safe methods without origin', () => {
   const result = runMiddleware(csrfProtection, {
     method: 'GET',
     headers: {},
+    cookies: {},
   });
 
   assert.equal(result.nextCalled, true);
@@ -111,6 +119,7 @@ test('csrf protection rejects unsafe methods without origin', () => {
   const result = runMiddleware(csrfProtection, {
     method: 'POST',
     headers: {},
+    cookies: {},
   });
 
   assert.equal(result.nextCalled, false);
@@ -125,6 +134,7 @@ test('csrf protection rejects untrusted origins and allows configured origins', 
     let result = runMiddleware(csrfProtection, {
       method: 'POST',
       headers: { origin: 'https://attacker.example.com' },
+      cookies: {},
     });
     assert.equal(result.nextCalled, false);
     assert.equal(result.res.statusCode, 403);
@@ -132,6 +142,7 @@ test('csrf protection rejects untrusted origins and allows configured origins', 
     result = runMiddleware(csrfProtection, {
       method: 'POST',
       headers: { origin: 'https://wavelab.example.com' },
+      cookies: {},
     });
     assert.equal(result.nextCalled, true);
     assert.equal(result.res.statusCode, null);

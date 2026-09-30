@@ -1,3 +1,5 @@
+import { fetchWithAuth } from './auth';
+
 // ╔══════════════════════════════════════════════════════╗
 // ║               src/api/settings.api.js                ║
 // ║  API helpers for site settings (admin + public)      ║
@@ -29,20 +31,31 @@ export const getSettings = async (page) => {
   if (!page) throw new Error('Missing page key when fetching settings');
 
   try {
-    const response = await fetch(`${API_BASE_URL}/${page}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/${page}`, {
       method: 'GET',
       credentials: 'include', // send cookies (auth session)
     });
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
-        alert('Session expired. Please log in again./');
-        window.location.href = '/login';
-        return;
+      const errorData = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        throw new Error(errorData?.message || 'Authentication required.');
       }
 
-      const errorData = await response.json();
-      console.error(`[ERROR] Failed to fetch settings for page "${page}":`, response.status, errorData);
+      if (response.status === 403) {
+        const error = new Error(
+          errorData?.message || 'You do not have permission to view these settings.'
+        );
+        error.status = 403;
+        throw error;
+      }
+
+      console.error(
+        `[ERROR] Failed to fetch settings for page "${page}":`,
+        response.status,
+        errorData
+      );
       throw new Error(buildSettingsErrorMessage(errorData, 'Failed to fetch settings'));
     }
 
@@ -66,7 +79,7 @@ export const saveSettings = async (page, data) => {
   if (!data || typeof data !== 'object') throw new Error('Invalid settings data');
 
   try {
-    const response = await fetch(`${API_BASE_URL}/${page}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/${page}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -87,3 +100,19 @@ export const saveSettings = async (page, data) => {
     throw error;
   }
 };
+
+async function requestArchivePolicy(path, options = {}) {
+  const response = await fetchWithAuth(`${API_BASE_URL}/operations/archive-policy/${path}`, {
+    credentials: 'include',
+    ...options,
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(buildSettingsErrorMessage(result, 'Archive policy request failed'));
+  }
+  return result;
+}
+
+export const previewArchivePolicy = () => requestArchivePolicy('preview', { method: 'GET' });
+
+export const runArchivePolicy = () => requestArchivePolicy('run', { method: 'POST' });

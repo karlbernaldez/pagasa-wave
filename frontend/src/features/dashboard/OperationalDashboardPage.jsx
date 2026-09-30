@@ -7,7 +7,7 @@ import UserManagementSection from '@dashboards/admin/sections/user-management/Us
 import WaveModelManagement from '@dashboards/admin/sections/wave-models/WaveModelManagement';
 import WavePipelineStatus from '@dashboards/admin/sections/wave-models/WavePipelineStatus';
 import WaveModelOnboarding from '@dashboards/admin/sections/wave-models/WaveModelOnboarding';
-import AnalyticsSection from '@dashboards/admin/sections/Analytics';
+import AnalyticsAccess from '@dashboards/admin/sections/AnalyticsAccess';
 import CalendarSection from '@dashboards/admin/sections/Calendar';
 import SettingsSection from '@dashboards/admin/sections/Settings';
 import { ADMIN_TABS } from '@dashboards/admin/constants/navigation';
@@ -22,7 +22,7 @@ const SECTION_MAP = {
   [ADMIN_TABS.USERS_ROLES]: (dark) => <UserManagementSection isDarkMode={dark} mode="roles" />,
   [ADMIN_TABS.USERS_LIST]: (dark) => <UserManagementSection isDarkMode={dark} mode="list" />,
   [ADMIN_TABS.USERS]: (dark) => <UserManagementSection isDarkMode={dark} mode="list" />,
-  [ADMIN_TABS.ANALYTICS]: (dark) => <AnalyticsSection isDarkMode={dark} />,
+  [ADMIN_TABS.ANALYTICS]: (dark) => <AnalyticsAccess isDarkMode={dark} />,
   [ADMIN_TABS.CALENDAR]: (dark) => <CalendarSection isDarkMode={dark} />,
   [ADMIN_TABS.SETTINGS]: (dark) => <SettingsSection isDarkMode={dark} />,
 };
