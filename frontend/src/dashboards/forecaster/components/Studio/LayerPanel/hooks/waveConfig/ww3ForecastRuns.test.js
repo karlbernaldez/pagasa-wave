@@ -35,6 +35,20 @@ describe('resolveECWAMForecastRun', () => {
     ).toMatchObject({ forecastHour: 48, runDateTime: '2026090218' });
   });
 
+  it('uses the published ECWAM source cycle when provided', () => {
+    expect(
+      resolveECWAMForecastRun({
+        forecastDate: '2026-09-30',
+        chartType: '48h forecast',
+        sourceCycle: '2026093000',
+      })
+    ).toMatchObject({
+      forecastHour: 48,
+      runDateTime: '2026100200',
+      runTag: '2026SEP30/2026100200',
+    });
+  });
+
   it('uses explicit valid three-hour frames through T+60 from 18Z', () => {
     expect(resolveECWAMForecastRun({ forecastDate: '2026-09-01', forecastHour: 3 })).toMatchObject({
       forecastHour: 3,
@@ -97,6 +111,32 @@ describe('resolveWW3ForecastRun', () => {
         chartType: '48h forecast',
       })
     ).toMatchObject({ forecastHour: 48, runDateTime: '2026090218' });
+  });
+
+  it('resolves published 00Z source cycles instead of assuming previous-day 18Z', () => {
+    expect(
+      resolveWW3ForecastRun({
+        forecastDate: '2026-09-30',
+        chartType: '24h forecast',
+        sourceCycle: '2026093000',
+      })
+    ).toMatchObject({
+      forecastHour: 24,
+      runDateTime: '2026100100',
+      runTag: '2026SEP30/2026100100',
+    });
+
+    expect(
+      resolveWW3ForecastRun({
+        forecastDate: '2026-09-30',
+        forecastHour: 3,
+        sourceCycle: '2026093000',
+      })
+    ).toMatchObject({
+      forecastHour: 3,
+      runDateTime: '2026093003',
+      runTag: '2026SEP30/2026093003',
+    });
   });
 
   it('uses explicit valid three-hour frames through T+60', () => {
