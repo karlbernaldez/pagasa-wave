@@ -374,8 +374,8 @@ export function savePointFeature({
 
 
 // export const handleKeyPress = (
-//   event, tools, draw, isDrawing, toggleDrawing, 
-//   startDrawing, stopDrawing, setIsDrawing, 
+//   event, tools, draw, isDrawing, toggleDrawing,
+//   startDrawing, stopDrawing, setIsDrawing,
 //   onToggleCanvas, onToggleFlagCanvas, map, setLayersRef
 // ) => {
 //   const key = event.key.toLowerCase();
