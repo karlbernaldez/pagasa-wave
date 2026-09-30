@@ -76,6 +76,55 @@ function safeRemoveLayer(map, id) {
   if (map?.getLayer?.(id)) map.removeLayer(id);
 }
 
+const layerSearchText = (layer = {}) =>
+  [
+    layer.id,
+    layer['source-layer'],
+    layer.source,
+    layer.metadata?.['mapbox:featureComponent'],
+    layer.metadata?.['mapbox:group'],
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+export function findGraticuleInsertionLayer(style = {}) {
+  const layers = Array.isArray(style?.layers) ? style.layers : [];
+  const candidates = layers.filter(
+    (layer) => layer?.id && ![MAIN_LAYER_ID, BLUR_LAYER_ID].includes(layer.id)
+  );
+
+  const landLayer = candidates.find((layer) => {
+    if (!['fill', 'fill-extrusion'].includes(layer.type)) return false;
+    const text = layerSearchText(layer);
+    return /(^|[^a-z])(land|landcover|landuse|terrain|building)([^a-z]|$)/.test(text);
+  });
+
+  if (landLayer) return landLayer.id;
+
+  const coastlineLayer = candidates.find((layer) => {
+    const text = layerSearchText(layer);
+    return /coast|shoreline/.test(text);
+  });
+
+  if (coastlineLayer) return coastlineLayer.id;
+
+  // Raster/custom styles may not expose a separate land layer. In that case,
+  // keep the grid above the raster but below labels whenever possible.
+  return candidates.find((layer) => layer.type === 'symbol')?.id || null;
+}
+
+function positionGraticuleLayers(map, beforeId) {
+  if (!beforeId || typeof map?.moveLayer !== 'function') return;
+
+  if (map.getLayer?.(BLUR_LAYER_ID)) {
+    map.moveLayer(BLUR_LAYER_ID, beforeId);
+  }
+  if (map.getLayer?.(MAIN_LAYER_ID)) {
+    map.moveLayer(MAIN_LAYER_ID, beforeId);
+  }
+}
+
 function ensureOwnedSource(map, spacing) {
   const data = buildGraticuleFeatureCollection(spacing);
   const source = map.getSource?.(SOURCE_ID);
@@ -113,13 +162,13 @@ export function ensureGraticuleLayer(
   const visibility = visible ? 'visible' : 'none';
   const lineColor = isDarkMode ? '#d8f6ff' : '#334155';
   const blurColor = isDarkMode ? '#06131f' : '#ffffff';
+  const beforeId = findGraticuleInsertionLayer(map.getStyle?.());
 
   if (!map.getLayer(BLUR_LAYER_ID)) {
     map.addLayer({
       id: BLUR_LAYER_ID,
       type: 'line',
       source: SOURCE_ID,
-      slot: 'top',
       layout: { visibility },
       paint: {
         'line-color': blurColor,
@@ -127,7 +176,7 @@ export function ensureGraticuleLayer(
         'line-opacity': Math.min(1, normalizedOpacity * 0.75),
         'line-blur': 1.2,
       },
-    });
+    }, beforeId || undefined);
   }
 
   if (!map.getLayer(MAIN_LAYER_ID)) {
@@ -135,15 +184,16 @@ export function ensureGraticuleLayer(
       id: MAIN_LAYER_ID,
       type: 'line',
       source: SOURCE_ID,
-      slot: 'top',
       layout: { visibility },
       paint: {
         'line-color': lineColor,
         'line-width': 0.8,
         'line-opacity': normalizedOpacity,
       },
-    });
+    }, beforeId || undefined);
   }
+
+  positionGraticuleLayers(map, beforeId);
 
   map.setLayoutProperty(BLUR_LAYER_ID, 'visibility', visibility);
   map.setLayoutProperty(MAIN_LAYER_ID, 'visibility', visibility);
@@ -167,7 +217,6 @@ export function updateGraticuleSpacing(map, spacing) {
   if (map) map.__wavelabGraticuleSpacing = normalizedSpacing;
   return normalizedSpacing;
 }
-
 
 export function updateGraticuleOpacity(map, opacity) {
   const normalizedOpacity = normalizeGraticuleOpacity(opacity);
