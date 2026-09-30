@@ -90,19 +90,12 @@ describe('wave overlay layer ordering', () => {
   it('inserts wave overlays above water and before land/labels', () => {
     const map = createMap();
 
-    syncWaveRasterLayers(
-      map,
-      ['WW3'],
-      true,
-      false,
-      false,
-      {
-        forecastDate: '2026-09-30',
-        chartType: '24h forecast',
-        ww3ForecastHour: 24,
-        ww3SourceCycle: '2026093000',
-      }
-    );
+    syncWaveRasterLayers(map, ['WW3'], true, false, false, {
+      forecastDate: '2026-09-30',
+      chartType: '24h forecast',
+      ww3ForecastHour: 24,
+      ww3SourceCycle: '2026093000',
+    });
 
     expect(map.addLayer).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'ww3-crossfade-layer-a', type: 'raster' }),
@@ -110,9 +103,15 @@ describe('wave overlay layer ordering', () => {
     );
 
     const layerIds = map.getStyle().layers.map((layer) => layer.id);
-    expect(layerIds.indexOf('ocean-water')).toBeLessThan(layerIds.indexOf('ww3-crossfade-layer-a'));
-    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(layerIds.indexOf('land-fill'));
-    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(layerIds.indexOf('place-label'));
+    expect(layerIds.indexOf('ocean-water')).toBeLessThan(
+      layerIds.indexOf('ww3-crossfade-layer-a')
+    );
+    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(
+      layerIds.indexOf('land-fill')
+    );
+    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(
+      layerIds.indexOf('place-label')
+    );
   });
 
   it('repositions an existing wave raster when the layer stack changes', () => {
