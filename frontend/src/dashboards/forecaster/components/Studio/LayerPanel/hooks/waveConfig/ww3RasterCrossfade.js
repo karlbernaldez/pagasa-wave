@@ -24,6 +24,12 @@ const setSlotVisibility = (map, slot, visible) => {
   }
 };
 
+const positionSlot = (map, slot, beforeId) => {
+  if (!beforeId || typeof map?.moveLayer !== 'function') return;
+  const { layerId } = idsFor(slot);
+  if (map.getLayer(layerId)) map.moveLayer(layerId, beforeId);
+};
+
 const addSlot = (map, slot, { tileUrl, opacity, showRaster, scheme, bounds, beforeId }) => {
   const { sourceId, layerId } = idsFor(slot);
 
@@ -70,7 +76,7 @@ export const removeWw3RasterCrossfade = (map) => {
 
 export const syncWw3RasterCrossfade = (
   map,
-  { tileUrl, opacity, showRaster, scheme = 'xyz', bounds, beforeId = 'graticules' }
+  { tileUrl, opacity, showRaster, scheme = 'xyz', bounds, beforeId }
 ) => {
   if (!map || !tileUrl) return;
 
@@ -103,7 +109,11 @@ export const syncWw3RasterCrossfade = (
   }
 
   setSlotVisibility(map, state.activeSlot, showRaster);
-  if (state.pendingSlot) setSlotVisibility(map, state.pendingSlot, showRaster);
+  positionSlot(map, state.activeSlot, beforeId);
+  if (state.pendingSlot) {
+    setSlotVisibility(map, state.pendingSlot, showRaster);
+    positionSlot(map, state.pendingSlot, beforeId);
+  }
 
   const activeLayerId = idsFor(state.activeSlot).layerId;
   if (map.getLayer(activeLayerId)) {
