@@ -1,12 +1,12 @@
 // utils/ensureIds.js
 
-const makeId = () =>
-  globalThis.crypto?.randomUUID?.()
-  ?? `id_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+export const createSettingsId = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `id_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 
 const withId = (item) => {
-  if (!item) return { id: makeId() };
-  return item.id ? item : { id: makeId(), ...item };
+  if (!item) return { id: createSettingsId() };
+  return item.id ? item : { id: createSettingsId(), ...item };
 };
 
 export const ensureIdsInSettings = (s = {}) => ({
