@@ -72,11 +72,7 @@ export async function requiredEcwamSourceCycle(packageDate, policyOverride = nul
     String(date.getUTCDate()).padStart(2, '0'),
   ].join('-');
 
-  return requiredSourceCycle(
-    normalizedPackageDate,
-    policy.preferredHourUtc,
-    policy.cycleDateMode
-  );
+  return requiredSourceCycle(normalizedPackageDate, policy.preferredHourUtc, policy.cycleDateMode);
 }
 
 export function validateFrameRequest(packageDate, forecastHour) {
