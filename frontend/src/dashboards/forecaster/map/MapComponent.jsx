@@ -243,6 +243,7 @@ const MapComponent = ({
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const isDarkModeRef = useRef(isDarkMode);
+  const themeIdleHandlerRef = useRef(null);
 
   useEffect(() => {
     isDarkModeRef.current = isDarkMode;
@@ -350,9 +351,10 @@ const MapComponent = ({
                 }
 
                 // Studio setup can add or rebuild basemap-related layers.
-                // Reapply the latest theme only after setup has settled so
-                // a refresh cannot leave the map in the neutral/default style.
+                // Reapply now and once more after Mapbox finishes all pending
+                // source/style work so refreshes cannot settle on the neutral style.
                 applyTheme(map, isDarkModeRef.current);
+                map.once('idle', () => applyTheme(map, isDarkModeRef.current));
                 releaseLoading();
               });
           } catch (error) {
@@ -396,10 +398,37 @@ const MapComponent = ({
     if (!map) return undefined;
 
     const applyCurrentTheme = () => applyTheme(map, isDarkModeRef.current);
-    if (applyCurrentTheme()) return undefined;
 
-    map.once('styledata', applyCurrentTheme);
-    return () => map.off('styledata', applyCurrentTheme);
+    // Apply immediately when possible, then once more when Mapbox becomes idle.
+    // The idle pass is important on refresh because style/source work can finish
+    // after the initial load and overwrite earlier paint changes.
+    applyCurrentTheme();
+
+    if (themeIdleHandlerRef.current) {
+      map.off('idle', themeIdleHandlerRef.current);
+    }
+
+    const applyWhenIdle = () => {
+      applyCurrentTheme();
+      if (themeIdleHandlerRef.current === applyWhenIdle) {
+        themeIdleHandlerRef.current = null;
+      }
+    };
+
+    themeIdleHandlerRef.current = applyWhenIdle;
+    map.once('idle', applyWhenIdle);
+
+    if (!map.isStyleLoaded()) {
+      map.once('styledata', applyCurrentTheme);
+    }
+
+    return () => {
+      map.off('idle', applyWhenIdle);
+      map.off('styledata', applyCurrentTheme);
+      if (themeIdleHandlerRef.current === applyWhenIdle) {
+        themeIdleHandlerRef.current = null;
+      }
+    };
   }, [isDarkMode]);
 
   return (
