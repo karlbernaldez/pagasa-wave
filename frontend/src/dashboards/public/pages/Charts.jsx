@@ -638,7 +638,7 @@ export default function Charts() {
     return () => window.clearInterval(timer);
   }, [activeStyleMode, exportEntries, pdfReadinessKey]);
 
-  const handleDownloadChartSetPdf = () => {
+  const handleDownloadChartSetPdf = async () => {
     if (!isPdfReady) {
       setExportState((prev) => ({
         ...prev,
@@ -681,15 +681,22 @@ export default function Charts() {
     }
 
     setExportState((prev) => ({ ...prev, error: '' }));
-    void writeChartSetPdfWindow({
-      printWindow,
-      activeDate,
-      activeStyleLabel,
-      chartEntries: printableEntries,
-      showStaffInfo,
-      logoSrc: publicSettings.logoPreview || '/pagasa-logo.png',
-      pdfNote: publicSettings.publicChartPdfNote || DEFAULT_PUBLIC_CHART_PDF_NOTE,
-    });
+    try {
+      await writeChartSetPdfWindow({
+        printWindow,
+        activeDate,
+        activeStyleLabel,
+        chartEntries: printableEntries,
+        showStaffInfo,
+        logoSrc: publicSettings.logoPreview || '/pagasa-logo.png',
+        pdfNote: publicSettings.publicChartPdfNote || DEFAULT_PUBLIC_CHART_PDF_NOTE,
+      });
+    } catch (error) {
+      setExportState((prev) => ({
+        ...prev,
+        error: error?.message || 'Failed to prepare the PDF print window.',
+      }));
+    }
   };
 
   return (
