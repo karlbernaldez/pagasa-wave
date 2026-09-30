@@ -66,6 +66,65 @@ const isLatitude = (value) => value >= -90 && value <= 90;
 const isZoom = (value) => value >= MIN_ZOOM && value <= MAX_ZOOM;
 const isPadding = (value) => value >= 0 && value <= MAX_PADDING;
 
+function normalizeCustomStyles(input = []) {
+  if (!Array.isArray(input)) return [];
+
+  return input.map((style) => ({
+    id: String(style?.id || '').trim(),
+    name: String(style?.name || '').trim(),
+    url: String(style?.url || '').trim(),
+  }));
+}
+
+function migrateLegacyMapStyle(source = {}, customStyles = []) {
+  if (source.lightStyleId || source.darkStyleId || Array.isArray(source.customStyles)) {
+    return {
+      lightStyleId: source.lightStyleId,
+      darkStyleId: source.darkStyleId,
+      customStyles,
+    };
+  }
+
+  const addLegacyCustom = (url, suffix) => {
+    const normalizedUrl = String(url || '').trim();
+    if (!normalizedUrl) return null;
+
+    const id = `legacy-custom-${suffix}`;
+    customStyles.push({
+      id,
+      name: suffix === 'light' ? 'Legacy Light Style' : suffix === 'dark' ? 'Legacy Dark Style' : 'Legacy Custom Style',
+      url: normalizedUrl,
+    });
+    return `custom:${id}`;
+  };
+
+  if (isPlainObject(source.light) || isPlainObject(source.dark)) {
+    const resolveLegacyTheme = (value, suffix) => {
+      if (MAP_STYLE_PRESETS.has(value?.preset)) return `preset:${value.preset}`;
+      if (value?.preset === 'custom') return addLegacyCustom(value.customStyleUrl, suffix);
+      return null;
+    };
+
+    return {
+      lightStyleId: resolveLegacyTheme(source.light, 'light'),
+      darkStyleId: resolveLegacyTheme(source.dark, 'dark'),
+      customStyles,
+    };
+  }
+
+  if (MAP_STYLE_PRESETS.has(source.preset)) {
+    const styleId = `preset:${source.preset}`;
+    return { lightStyleId: styleId, darkStyleId: styleId, customStyles };
+  }
+
+  if (source.preset === 'custom' || source.customStyleUrl) {
+    const styleId = addLegacyCustom(source.customStyleUrl, 'shared');
+    return { lightStyleId: styleId, darkStyleId: styleId, customStyles };
+  }
+
+  return { lightStyleId: null, darkStyleId: null, customStyles };
+}
+
 export function normalizeMapViewSettings(input = {}) {
   const source = isPlainObject(input) ? input : {};
   const defaults = DEFAULT_MAP_VIEW_SETTINGS;
@@ -76,55 +135,8 @@ export function normalizeMapViewSettings(input = {}) {
   const fitBoundsSource = isPlainObject(source.fitBounds) ? source.fitBounds : {};
   const paddingSource = isPlainObject(source.padding) ? source.padding : {};
   const mapStyleSource = isPlainObject(source.mapStyle) ? source.mapStyle : {};
-  const rawCustomStyles = Array.isArray(mapStyleSource.customStyles)
-    ? mapStyleSource.customStyles
-    : [];
-  const customStyles = rawCustomStyles.map((style) => ({
-    id: String(style?.id || '').trim(),
-    name: String(style?.name || '').trim(),
-    url: String(style?.url || '').trim(),
-  }));
-
-  // Backward compatibility with the temporary single/custom style shapes.
-  let legacyStyleId = null;
-  if (MAP_STYLE_PRESETS.has(mapStyleSource.preset)) {
-    legacyStyleId = `preset:${mapStyleSource.preset}`;
-  } else if (typeof mapStyleSource.customStyleUrl === 'string' && mapStyleSource.customStyleUrl.trim()) {
-    customStyles.push({
-      id: 'legacy-custom',
-      name: 'Custom Mapbox Style',
-      url: mapStyleSource.customStyleUrl.trim(),
-    });
-    legacyStyleId = 'custom:legacy-custom';
-  }
-
-  const resolveLegacyThemeStyleId = (value) => {
-    if (!isPlainObject(value)) return null;
-    if (MAP_STYLE_PRESETS.has(value.preset)) return `preset:${value.preset}`;
-    if (value.preset === 'custom' && typeof value.customStyleUrl === 'string' && value.customStyleUrl.trim()) {
-      const id = `legacy-${customStyles.length + 1}`;
-      customStyles.push({
-        id,
-        name: 'Custom Mapbox Style',
-        url: value.customStyleUrl.trim(),
-      });
-      return `custom:${id}`;
-    }
-    return null;
-  };
-
-  const lightStyleId = String(
-    mapStyleSource.lightStyleId ||
-      resolveLegacyThemeStyleId(mapStyleSource.light) ||
-      legacyStyleId ||
-      defaults.mapStyle.lightStyleId
-  ).trim();
-  const darkStyleId = String(
-    mapStyleSource.darkStyleId ||
-      resolveLegacyThemeStyleId(mapStyleSource.dark) ||
-      legacyStyleId ||
-      defaults.mapStyle.darkStyleId
-  ).trim();
+  const customStyles = normalizeCustomStyles(mapStyleSource.customStyles);
+  const migratedMapStyle = migrateLegacyMapStyle(mapStyleSource, customStyles);
   const themeMode = MAP_STYLE_THEME_MODES.has(mapStyleSource.themeMode)
     ? mapStyleSource.themeMode
     : defaults.mapStyle.themeMode;
@@ -159,9 +171,13 @@ export function normalizeMapViewSettings(input = {}) {
     },
     fitBoundsMaxZoom: readNumber(source, 'fitBoundsMaxZoom', defaults.fitBoundsMaxZoom),
     mapStyle: {
-      lightStyleId,
-      darkStyleId,
-      customStyles,
+      lightStyleId: String(
+        migratedMapStyle.lightStyleId || defaults.mapStyle.lightStyleId
+      ).trim(),
+      darkStyleId: String(
+        migratedMapStyle.darkStyleId || defaults.mapStyle.darkStyleId
+      ).trim(),
+      customStyles: migratedMapStyle.customStyles,
       themeMode,
     },
   };
@@ -191,7 +207,7 @@ export function validateMapViewSettings(settings = {}) {
   if (!isLatitude(settings.fitBounds.south)) errors.push('fitBounds.south must be between -90 and 90.');
   if (!isLatitude(settings.fitBounds.north)) errors.push('fitBounds.north must be between -90 and 90.');
   if (settings.fitBounds.west >= settings.fitBounds.east) errors.push('fitBounds.west must be less than fitBounds.east.');
-  if (settings.fitBounds.south >= settings.fitBounds.north) errors.push('fitBounds.south must be less than fitBounds.north.');
+  if (settings.fitBounds.south >= settings.fitBounds.north) errors.push('fitBounds.south must be less than settings.fitBounds.north.');
 
   for (const key of ['top', 'bottom', 'left', 'right']) {
     if (!isPadding(settings.padding[key])) {
@@ -215,7 +231,9 @@ export function validateMapViewSettings(settings = {}) {
 
   for (const [index, style] of customStyles.entries()) {
     if (!/^[A-Za-z0-9_-]{1,80}$/.test(style?.id || '')) {
-      errors.push(`mapStyle.customStyles[${index}].id must contain only letters, numbers, underscores, or hyphens.`);
+      errors.push(
+        `mapStyle.customStyles[${index}].id must contain only letters, numbers, underscores, or hyphens.`
+      );
     } else if (customIds.has(style.id)) {
       errors.push(`mapStyle.customStyles contains duplicate id "${style.id}".`);
     } else {
@@ -235,6 +253,7 @@ export function validateMapViewSettings(settings = {}) {
 
   const validateSelectedStyleId = (field, value) => {
     const styleId = String(value || '').trim();
+
     if (styleId.startsWith('preset:')) {
       const preset = styleId.slice('preset:'.length);
       if (!MAP_STYLE_PRESETS.has(preset)) {
