@@ -65,8 +65,14 @@ export const DEFAULT_STUDIO_MAP_VIEW = Object.freeze({
   }),
   fitBoundsMaxZoom: 8,
   mapStyle: Object.freeze({
-    preset: 'wavelab',
-    customStyleUrl: '',
+    light: Object.freeze({
+      preset: 'wavelab',
+      customStyleUrl: '',
+    }),
+    dark: Object.freeze({
+      preset: 'wavelab',
+      customStyleUrl: '',
+    }),
     themeMode: 'adaptive',
   }),
 });
@@ -139,26 +145,49 @@ const normalizePadding = (padding = {}, fallback = {}) => ({
   right: Math.max(0, toFiniteNumber(padding.right, fallback.right)),
 });
 
-const normalizeMapStyle = (mapStyle = {}, fallback = DEFAULT_STUDIO_MAP_VIEW.mapStyle) => {
-  const preset = Object.prototype.hasOwnProperty.call(MAP_STYLE_PRESETS, mapStyle?.preset)
-    ? mapStyle.preset
-    : fallback.preset;
+const normalizeThemeStyle = (themeStyle = {}, fallback = {}) => {
+  const preset = Object.prototype.hasOwnProperty.call(MAP_STYLE_PRESETS, themeStyle?.preset)
+    ? themeStyle.preset
+    : fallback.preset || 'wavelab';
   const customStyleUrl =
-    typeof mapStyle?.customStyleUrl === 'string' ? mapStyle.customStyleUrl.trim() : fallback.customStyleUrl;
+    typeof themeStyle?.customStyleUrl === 'string'
+      ? themeStyle.customStyleUrl.trim()
+      : fallback.customStyleUrl || '';
+
+  return { preset, customStyleUrl };
+};
+
+const normalizeMapStyle = (mapStyle = {}, fallback = DEFAULT_STUDIO_MAP_VIEW.mapStyle) => {
+  // Backward compatibility with the first single-style settings shape.
+  const legacyThemeStyle =
+    mapStyle?.preset || mapStyle?.customStyleUrl
+      ? { preset: mapStyle.preset, customStyleUrl: mapStyle.customStyleUrl }
+      : null;
+
+  const light = normalizeThemeStyle(
+    mapStyle?.light || legacyThemeStyle || {},
+    fallback.light
+  );
+  const dark = normalizeThemeStyle(
+    mapStyle?.dark || legacyThemeStyle || {},
+    fallback.dark
+  );
   const themeMode = ['adaptive', 'native'].includes(mapStyle?.themeMode)
     ? mapStyle.themeMode
     : fallback.themeMode;
 
-  return { preset, customStyleUrl, themeMode };
+  return { light, dark, themeMode };
 };
 
-export function resolveStudioMapStyleUrl(settings = {}) {
+export function resolveStudioMapStyleUrl(settings = {}, isDarkMode = false) {
   const mapStyle = normalizeMapStyle(settings.mapStyle);
-  if (mapStyle.preset === 'custom' && mapStyle.customStyleUrl) {
-    return mapStyle.customStyleUrl;
+  const themeStyle = isDarkMode ? mapStyle.dark : mapStyle.light;
+
+  if (themeStyle.preset === 'custom' && themeStyle.customStyleUrl) {
+    return themeStyle.customStyleUrl;
   }
 
-  return MAP_STYLE_PRESETS[mapStyle.preset]?.url || DEFAULT_MAP_STYLE_URL;
+  return MAP_STYLE_PRESETS[themeStyle.preset]?.url || DEFAULT_MAP_STYLE_URL;
 }
 
 export function normalizeStudioMapViewSettings(settings = {}) {
