@@ -256,10 +256,18 @@ const StudioPanel = ({
   );
 
   useEffect(() => {
-    if (hasSelectedAnnotationLayer && !readOnly) {
+    if (!hasSelectedAnnotationLayer || readOnly) return undefined;
+
+    const frame = window.requestAnimationFrame(() => {
       annotationStyleDrag.resetPosition();
-    }
-  }, [activeLayerId, hasSelectedAnnotationLayer, readOnly, annotationStyleDrag.resetPosition]);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    activeLayerId,
+    hasSelectedAnnotationLayer,
+    readOnly,
+    annotationStyleDrag.resetPosition,
+  ]);
 
   // ── Delete handling ──────────────────────────────────────────────────────────
   const confirmDeleteLayer = async () => {
@@ -277,17 +285,13 @@ const StudioPanel = ({
   };
 
   // ── Menu actions ─────────────────────────────────────────────────────────────
-  const menuActions = {
-    onNew,
-    onOpen: () => setShowProjectList(true),
-    onSave,
-    onSaveAs: () => setShowModal(true),
-    onSubmit: () => setShowSubmitModal(true),
-    onGeoJson: addLayer,
+  const menuSections = buildMenuSections({
+    openNewProject: onNew,
+    openProjectList: () => setShowProjectList(true),
+    openSubmitData: () => setShowSubmitModal(true),
+    openShareProject: () => setShowShareModal(true),
     onView,
-  };
-
-  const menuSections = buildMenuSections(menuActions);
+  });
 
   const toggleSubmenu = (id) => {
     setActiveMenu((prev) => (prev === id ? null : id));
