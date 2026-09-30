@@ -206,6 +206,8 @@ const SystemLayersSection = ({
   waveConfig,
   onToggleDomain,
   onToggleUtility,
+  graticuleSpacing,
+  onSetGraticuleSpacing,
   onToggleSatellite,
   onToggleWind,
   onSetWindElement,
@@ -411,13 +413,71 @@ const SystemLayersSection = ({
             isDarkMode={isDarkMode}
           >
             {UTILITY_LAYERS.map((layer) => (
-              <CheckboxLayerRow
-                key={layer.id}
-                {...layer}
-                active={utilitiesLayers[layer.id]}
-                onToggle={onToggleUtility}
-                isDarkMode={isDarkMode}
-              />
+              <React.Fragment key={layer.id}>
+                <CheckboxLayerRow
+                  {...layer}
+                  active={utilitiesLayers[layer.id]}
+                  onToggle={onToggleUtility}
+                  isDarkMode={isDarkMode}
+                />
+
+                {layer.id === 'GRATICULES' && utilitiesLayers.GRATICULES && (
+                  <div
+                    className={cn(
+                      'mx-2 mb-2 rounded-xl border p-2.5',
+                      isDarkMode
+                        ? 'border-white/10 bg-white/[0.035]'
+                        : 'border-slate-200/70 bg-white/55'
+                    )}
+                  >
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span
+                        className={cn(
+                          'text-[10px] font-black uppercase tracking-wide',
+                          isDarkMode ? 'text-white/45' : 'text-slate-500'
+                        )}
+                      >
+                        Grid spacing
+                      </span>
+                      <span
+                        className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-black',
+                          isDarkMode
+                            ? 'bg-cyan-400/10 text-cyan-200'
+                            : 'bg-blue-500/10 text-blue-700'
+                        )}
+                      >
+                        {graticuleSpacing}°
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {[1, 2, 5, 10].map((spacing) => {
+                        const active = Number(graticuleSpacing) === spacing;
+                        return (
+                          <button
+                            key={spacing}
+                            type="button"
+                            onClick={() => onSetGraticuleSpacing?.(spacing)}
+                            className={cn(
+                              'h-8 rounded-lg border text-[11px] font-black transition-colors',
+                              active
+                                ? isDarkMode
+                                  ? 'border-cyan-300/30 bg-cyan-400/15 text-cyan-100'
+                                  : 'border-blue-300 bg-blue-50 text-blue-700'
+                                : isDarkMode
+                                  ? 'border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07]'
+                                  : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-white'
+                            )}
+                          >
+                            {spacing}°
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
             ))}
           </LayerGroupCard>
 
