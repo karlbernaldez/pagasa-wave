@@ -515,7 +515,10 @@ export default function Charts() {
     return () => controller.abort();
   }, [chartRequestKey, isDark, query]);
 
-  const recentProjects = state.requestKey === chartRequestKey ? state.projects : [];
+  const recentProjects = useMemo(
+    () => (state.requestKey === chartRequestKey ? state.projects : []),
+    [chartRequestKey, state.projects, state.requestKey]
+  );
   const historyGroups = useMemo(() => groupPublicChartHistory(recentProjects), [recentProjects]);
   const latestDate = historyGroups[0]?.dateKey || '';
   const selectedDateAvailable =
@@ -535,7 +538,10 @@ export default function Charts() {
   const exportRequestKey = `${activeDate}\u0000${isDark ? 'dark' : 'light'}\u0000${chartExportSignature}`;
   const hasExportRequest = Boolean(activeDate && recentProjects.length);
   const exportRequestCurrent = exportState.requestKey === exportRequestKey;
-  const exportEntries = exportRequestCurrent ? exportState.entries : [];
+  const exportEntries = useMemo(
+    () => (exportRequestCurrent ? exportState.entries : []),
+    [exportRequestCurrent, exportState.entries]
+  );
   const exportError = exportRequestCurrent ? exportState.error : '';
   const exportLoading = hasExportRequest && !exportRequestCurrent;
   const pdfReadinessKey = `${exportRequestKey}\u0000${activeStyleMode}`;
