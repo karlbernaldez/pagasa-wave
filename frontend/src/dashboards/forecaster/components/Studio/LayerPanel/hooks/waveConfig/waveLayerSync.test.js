@@ -103,15 +103,9 @@ describe('wave overlay layer ordering', () => {
     );
 
     const layerIds = map.getStyle().layers.map((layer) => layer.id);
-    expect(layerIds.indexOf('ocean-water')).toBeLessThan(
-      layerIds.indexOf('ww3-crossfade-layer-a')
-    );
-    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(
-      layerIds.indexOf('land-fill')
-    );
-    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(
-      layerIds.indexOf('place-label')
-    );
+    expect(layerIds.indexOf('ocean-water')).toBeLessThan(layerIds.indexOf('ww3-crossfade-layer-a'));
+    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(layerIds.indexOf('land-fill'));
+    expect(layerIds.indexOf('ww3-crossfade-layer-a')).toBeLessThan(layerIds.indexOf('place-label'));
   });
 
   it('repositions an existing wave raster when the layer stack changes', () => {
