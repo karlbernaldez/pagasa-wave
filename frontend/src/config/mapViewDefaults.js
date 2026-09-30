@@ -1,5 +1,40 @@
 export const DEFAULT_MAP_STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
 
+export const MAP_STYLE_PRESETS = Object.freeze({
+  wavelab: Object.freeze({
+    label: 'WaveLab Default',
+    url: DEFAULT_MAP_STYLE_URL,
+  }),
+  streets: Object.freeze({
+    label: 'Mapbox Streets',
+    url: 'mapbox://styles/mapbox/streets-v12',
+  }),
+  outdoors: Object.freeze({
+    label: 'Mapbox Outdoors',
+    url: 'mapbox://styles/mapbox/outdoors-v12',
+  }),
+  light: Object.freeze({
+    label: 'Mapbox Light',
+    url: 'mapbox://styles/mapbox/light-v11',
+  }),
+  dark: Object.freeze({
+    label: 'Mapbox Dark',
+    url: 'mapbox://styles/mapbox/dark-v11',
+  }),
+  satellite: Object.freeze({
+    label: 'Mapbox Satellite',
+    url: 'mapbox://styles/mapbox/satellite-v9',
+  }),
+  'satellite-streets': Object.freeze({
+    label: 'Mapbox Satellite Streets',
+    url: 'mapbox://styles/mapbox/satellite-streets-v12',
+  }),
+  custom: Object.freeze({
+    label: 'Custom Mapbox Style',
+    url: '',
+  }),
+});
+
 export const DEFAULT_STUDIO_MAP_VIEW = Object.freeze({
   center: Object.freeze({
     longitude: 120.0,
@@ -29,6 +64,11 @@ export const DEFAULT_STUDIO_MAP_VIEW = Object.freeze({
     right: 200,
   }),
   fitBoundsMaxZoom: 8,
+  mapStyle: Object.freeze({
+    preset: 'wavelab',
+    customStyleUrl: '',
+    themeMode: 'adaptive',
+  }),
 });
 
 const toFiniteNumber = (value, fallback) => {
@@ -99,6 +139,28 @@ const normalizePadding = (padding = {}, fallback = {}) => ({
   right: Math.max(0, toFiniteNumber(padding.right, fallback.right)),
 });
 
+const normalizeMapStyle = (mapStyle = {}, fallback = DEFAULT_STUDIO_MAP_VIEW.mapStyle) => {
+  const preset = Object.prototype.hasOwnProperty.call(MAP_STYLE_PRESETS, mapStyle?.preset)
+    ? mapStyle.preset
+    : fallback.preset;
+  const customStyleUrl =
+    typeof mapStyle?.customStyleUrl === 'string' ? mapStyle.customStyleUrl.trim() : fallback.customStyleUrl;
+  const themeMode = ['adaptive', 'native'].includes(mapStyle?.themeMode)
+    ? mapStyle.themeMode
+    : fallback.themeMode;
+
+  return { preset, customStyleUrl, themeMode };
+};
+
+export function resolveStudioMapStyleUrl(settings = {}) {
+  const mapStyle = normalizeMapStyle(settings.mapStyle);
+  if (mapStyle.preset === 'custom' && mapStyle.customStyleUrl) {
+    return mapStyle.customStyleUrl;
+  }
+
+  return MAP_STYLE_PRESETS[mapStyle.preset]?.url || DEFAULT_MAP_STYLE_URL;
+}
+
 export function normalizeStudioMapViewSettings(settings = {}) {
   const defaults = DEFAULT_STUDIO_MAP_VIEW;
   const zoom = normalizeZoom(settings.zoom, defaults.zoom);
@@ -121,6 +183,7 @@ export function normalizeStudioMapViewSettings(settings = {}) {
     fitBounds,
     padding: normalizePadding(settings.padding, defaults.padding),
     fitBoundsMaxZoom: fitBoundsMaxZoom <= zoom.max ? fitBoundsMaxZoom : defaults.fitBoundsMaxZoom,
+    mapStyle: normalizeMapStyle(settings.mapStyle, defaults.mapStyle),
   };
 }
 
