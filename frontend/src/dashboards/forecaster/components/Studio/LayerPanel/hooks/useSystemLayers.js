@@ -63,7 +63,9 @@ export const useSystemLayers = ({
   projectId,
 }) => {
   const [domainLayers, setDomainLayers] = useState({
-    PAR: false, TCID: false, TCAD: false,
+    PAR: false,
+    TCID: false,
+    TCAD: false,
   });
 
   const [utilitiesLayers, setUtilitiesLayers] = useState({
@@ -85,9 +87,13 @@ export const useSystemLayers = ({
   const checkProjectId = () => {
     if (projectId) return true;
     Swal.fire({
-      toast: true, position: 'top-end', icon: 'warning',
+      toast: true,
+      position: 'top-end',
+      icon: 'warning',
       title: 'Please select or create a project first.',
-      showConfirmButton: false, timer: 2000, timerProgressBar: true,
+      showConfirmButton: false,
+      timer: 2000,
+      timerProgressBar: true,
       background: isDarkMode ? '#374151' : '#fff',
       color: isDarkMode ? '#f3f4f6' : '#111827',
     });
@@ -238,15 +244,7 @@ export const useSystemLayers = ({
       cancelled = true;
       map.off('load', apply);
     };
-  }, [
-    forecastDate,
-    graticuleOpacity,
-    graticuleSpacing,
-    isDarkMode,
-    mapLoaded,
-    mapRef,
-    projectId,
-  ]);
+  }, [forecastDate, graticuleOpacity, graticuleSpacing, isDarkMode, mapLoaded, mapRef, projectId]);
 
   useEffect(() => {
     if (!mapLoaded) return undefined;
@@ -286,12 +284,7 @@ export const useSystemLayers = ({
       console.error('[pagasa-nwp-raster-update-error]', error);
       showPagasaNwpRasterError(error?.message || 'Unable to update PAGASA NWP raster.');
     }
-  }, [
-    forecastDate,
-    mapRef,
-    showPagasaNwpRasterError,
-    utilitiesLayers.PAGASA_NWP_RASTER,
-  ]);
+  }, [forecastDate, mapRef, showPagasaNwpRasterError, utilitiesLayers.PAGASA_NWP_RASTER]);
 
   // ── Toggle handlers ─────────────────────────────────────────────────────────
   const toggleDomainLayer = (layerId) => {

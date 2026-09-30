@@ -294,10 +294,7 @@ const MapComponent = ({
           mapContainerRef.current.removeChild(mapContainerRef.current.firstChild);
         }
 
-        const initialStyleUrl = resolveStudioMapStyleUrl(
-          mapViewSettings,
-          isDarkModeRef.current
-        );
+        const initialStyleUrl = resolveStudioMapStyleUrl(mapViewSettings, isDarkModeRef.current);
 
         map = new mapboxgl.Map({
           container: mapContainerRef.current,

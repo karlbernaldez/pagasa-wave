@@ -110,12 +110,8 @@ describe('normalizeStudioMapViewSettings', () => {
       },
     };
 
-    expect(resolveStudioMapStyleUrl(settings, false)).toBe(
-      'mapbox://styles/mapbox/light-v11'
-    );
-    expect(resolveStudioMapStyleUrl(settings, true)).toBe(
-      'mapbox://styles/mapbox/dark-v11'
-    );
+    expect(resolveStudioMapStyleUrl(settings, false)).toBe('mapbox://styles/mapbox/light-v11');
+    expect(resolveStudioMapStyleUrl(settings, true)).toBe('mapbox://styles/mapbox/dark-v11');
   });
 
   it('resolves reusable custom styles by id', () => {
@@ -131,12 +127,8 @@ describe('normalizeStudioMapViewSettings', () => {
       },
     };
 
-    expect(resolveStudioMapStyleUrl(settings, false)).toBe(
-      'mapbox://styles/example/day'
-    );
-    expect(resolveStudioMapStyleUrl(settings, true)).toBe(
-      'mapbox://styles/example/night'
-    );
+    expect(resolveStudioMapStyleUrl(settings, false)).toBe('mapbox://styles/example/day');
+    expect(resolveStudioMapStyleUrl(settings, true)).toBe('mapbox://styles/example/night');
     expect(resolveStudioMapStyleUrl()).toBe(DEFAULT_MAP_STYLE_URL);
   });
 });

@@ -460,9 +460,7 @@ const SystemLayersSection = ({
                         max="10"
                         step="1"
                         value={graticuleSpacing}
-                        onChange={(event) =>
-                          onSetGraticuleSpacing?.(Number(event.target.value))
-                        }
+                        onChange={(event) => onSetGraticuleSpacing?.(Number(event.target.value))}
                         aria-label="Graticule spacing in degrees"
                         className="w-full accent-cyan-500"
                       />

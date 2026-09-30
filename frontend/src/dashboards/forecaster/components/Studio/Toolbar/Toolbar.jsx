@@ -57,9 +57,7 @@ const getTheme = (isDarkMode) => ({
   active: isDarkMode
     ? 'border-cyan-300/25 bg-cyan-400/[0.11] text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
     : 'border-blue-200/80 bg-blue-500/[0.09] text-blue-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]',
-  iconRail: isDarkMode
-    ? 'bg-transparent text-white/65'
-    : 'bg-transparent text-slate-600',
+  iconRail: isDarkMode ? 'bg-transparent text-white/65' : 'bg-transparent text-slate-600',
   activeIconRail: isDarkMode
     ? 'bg-cyan-400/[0.10] text-cyan-100'
     : 'bg-blue-500/[0.08] text-blue-700',

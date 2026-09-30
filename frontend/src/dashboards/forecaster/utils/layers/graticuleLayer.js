@@ -113,26 +113,22 @@ export function isForeignGraticuleLayer(layer = {}) {
 
 function suppressForeignGraticuleLayers(map) {
   const layers = map.getStyle?.()?.layers || [];
-  layers
-    .filter(isForeignGraticuleLayer)
-    .forEach((layer) => {
-      try {
-        if (map.getLayer?.(layer.id)) {
-          map.setLayoutProperty(layer.id, 'visibility', 'none');
-        }
-      } catch {
-        // Some imported/custom-style layers may not support mutation.
+  layers.filter(isForeignGraticuleLayer).forEach((layer) => {
+    try {
+      if (map.getLayer?.(layer.id)) {
+        map.setLayoutProperty(layer.id, 'visibility', 'none');
       }
-    });
+    } catch {
+      // Some imported/custom-style layers may not support mutation.
+    }
+  });
 }
 
 export function findGraticuleInsertionLayer(style = {}) {
   const layers = Array.isArray(style?.layers) ? style.layers : [];
   const candidates = layers
     .map((layer, index) => ({ layer, index }))
-    .filter(
-      ({ layer }) => layer?.id && ![MAIN_LAYER_ID, BLUR_LAYER_ID].includes(layer.id)
-    );
+    .filter(({ layer }) => layer?.id && ![MAIN_LAYER_ID, BLUR_LAYER_ID].includes(layer.id));
 
   const isWaterLayer = (layer) => {
     const text = layerSearchText(layer);
@@ -247,32 +243,38 @@ export function ensureGraticuleLayer(
   const beforeId = findGraticuleInsertionLayer(map.getStyle?.());
 
   if (!map.getLayer(BLUR_LAYER_ID)) {
-    map.addLayer({
-      id: BLUR_LAYER_ID,
-      type: 'line',
-      source: SOURCE_ID,
-      layout: { visibility },
-      paint: {
-        'line-color': blurColor,
-        'line-width': 2.5,
-        'line-opacity': Math.min(1, normalizedOpacity * 0.75),
-        'line-blur': 1.2,
+    map.addLayer(
+      {
+        id: BLUR_LAYER_ID,
+        type: 'line',
+        source: SOURCE_ID,
+        layout: { visibility },
+        paint: {
+          'line-color': blurColor,
+          'line-width': 2.5,
+          'line-opacity': Math.min(1, normalizedOpacity * 0.75),
+          'line-blur': 1.2,
+        },
       },
-    }, beforeId || undefined);
+      beforeId || undefined
+    );
   }
 
   if (!map.getLayer(MAIN_LAYER_ID)) {
-    map.addLayer({
-      id: MAIN_LAYER_ID,
-      type: 'line',
-      source: SOURCE_ID,
-      layout: { visibility },
-      paint: {
-        'line-color': lineColor,
-        'line-width': 0.8,
-        'line-opacity': normalizedOpacity,
+    map.addLayer(
+      {
+        id: MAIN_LAYER_ID,
+        type: 'line',
+        source: SOURCE_ID,
+        layout: { visibility },
+        paint: {
+          'line-color': lineColor,
+          'line-width': 0.8,
+          'line-opacity': normalizedOpacity,
+        },
       },
-    }, beforeId || undefined);
+      beforeId || undefined
+    );
   }
 
   positionGraticuleLayers(map, beforeId);
@@ -281,11 +283,7 @@ export function ensureGraticuleLayer(
   map.setLayoutProperty(MAIN_LAYER_ID, 'visibility', visibility);
   map.setPaintProperty(BLUR_LAYER_ID, 'line-color', blurColor);
   map.setPaintProperty(MAIN_LAYER_ID, 'line-color', lineColor);
-  map.setPaintProperty(
-    BLUR_LAYER_ID,
-    'line-opacity',
-    Math.min(1, normalizedOpacity * 0.75)
-  );
+  map.setPaintProperty(BLUR_LAYER_ID, 'line-opacity', Math.min(1, normalizedOpacity * 0.75));
   map.setPaintProperty(MAIN_LAYER_ID, 'line-opacity', normalizedOpacity);
 
   map.__wavelabGraticuleSpacing = normalizedSpacing;
@@ -303,11 +301,7 @@ export function updateGraticuleSpacing(map, spacing) {
 export function updateGraticuleOpacity(map, opacity) {
   const normalizedOpacity = normalizeGraticuleOpacity(opacity);
   if (map?.getLayer?.(BLUR_LAYER_ID)) {
-    map.setPaintProperty(
-      BLUR_LAYER_ID,
-      'line-opacity',
-      Math.min(1, normalizedOpacity * 0.75)
-    );
+    map.setPaintProperty(BLUR_LAYER_ID, 'line-opacity', Math.min(1, normalizedOpacity * 0.75));
   }
   if (map?.getLayer?.(MAIN_LAYER_ID)) {
     map.setPaintProperty(MAIN_LAYER_ID, 'line-opacity', normalizedOpacity);

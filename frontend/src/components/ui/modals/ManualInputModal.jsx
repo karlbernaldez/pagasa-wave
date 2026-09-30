@@ -105,11 +105,13 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
             {/* Content */}
             <div className="px-6 pt-10 pb-6">
               {/* Icon */}
-              <div className={`w-14 h-14 mx-auto mb-5 rounded-full flex items-center justify-center ${
-                isDarkMode
-                  ? 'bg-cyan-500/20 ring-1 ring-cyan-400/40'
-                  : 'bg-blue-500/20 ring-1 ring-blue-500/50'
-              }`}>
+              <div
+                className={`w-14 h-14 mx-auto mb-5 rounded-full flex items-center justify-center ${
+                  isDarkMode
+                    ? 'bg-cyan-500/20 ring-1 ring-cyan-400/40'
+                    : 'bg-blue-500/20 ring-1 ring-blue-500/50'
+                }`}
+              >
                 <Navigation
                   size={28}
                   className={`${isDarkMode ? 'text-cyan-400' : 'text-blue-600'}`}
@@ -118,16 +120,20 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
               </div>
 
               {/* Title */}
-              <h3 className={`text-xl font-bold text-center mb-2 ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>
+              <h3
+                className={`text-xl font-bold text-center mb-2 ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}
+              >
                 {isLowWave ? 'Enter Low Wave Coordinates' : 'Enter Storm Marker'}
               </h3>
 
               {/* Subtitle */}
-              <p className={`text-sm text-center mb-6 ${
-                isDarkMode ? 'text-white/60' : 'text-slate-600'
-              }`}>
+              <p
+                className={`text-sm text-center mb-6 ${
+                  isDarkMode ? 'text-white/60' : 'text-slate-600'
+                }`}
+              >
                 {isLowWave
                   ? 'Manually input coordinates for the selected low-wave marker'
                   : 'Manually input coordinates and storm details'}
@@ -137,9 +143,11 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Latitude Input */}
                 <div>
-                  <label className={`block text-xs font-semibold mb-2 ${
-                    isDarkMode ? 'text-white/80' : 'text-slate-700'
-                  }`}>
+                  <label
+                    className={`block text-xs font-semibold mb-2 ${
+                      isDarkMode ? 'text-white/80' : 'text-slate-700'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       <Globe size={14} />
                       Latitude
@@ -162,14 +170,14 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
                             ? 'bg-red-500/10 border-2 border-red-400/50 text-white placeholder:text-red-300/40'
                             : 'bg-red-50/50 border-2 border-red-400/50 text-slate-900 placeholder:text-red-500/40'
                           : isDarkMode
-                          ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
-                          : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
+                            ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
+                            : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
                       } backdrop-blur-sm`}
                     />
                     {errors.lat && (
-                      <p className={`text-xs mt-1.5 ${
-                        isDarkMode ? 'text-red-400' : 'text-red-600'
-                      }`}>
+                      <p
+                        className={`text-xs mt-1.5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}
+                      >
                         {errors.lat}
                       </p>
                     )}
@@ -178,9 +186,11 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
 
                 {/* Longitude Input */}
                 <div>
-                  <label className={`block text-xs font-semibold mb-2 ${
-                    isDarkMode ? 'text-white/80' : 'text-slate-700'
-                  }`}>
+                  <label
+                    className={`block text-xs font-semibold mb-2 ${
+                      isDarkMode ? 'text-white/80' : 'text-slate-700'
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
                       <Globe size={14} />
                       Longitude
@@ -203,14 +213,14 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
                             ? 'bg-red-500/10 border-2 border-red-400/50 text-white placeholder:text-red-300/40'
                             : 'bg-red-50/50 border-2 border-red-400/50 text-slate-900 placeholder:text-red-500/40'
                           : isDarkMode
-                          ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
-                          : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
+                            ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
+                            : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
                       } backdrop-blur-sm`}
                     />
                     {errors.lng && (
-                      <p className={`text-xs mt-1.5 ${
-                        isDarkMode ? 'text-red-400' : 'text-red-600'
-                      }`}>
+                      <p
+                        className={`text-xs mt-1.5 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}
+                      >
                         {errors.lng}
                       </p>
                     )}
@@ -220,46 +230,49 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
                 {!isLowWave && (
                   <>
                     {/* Storm Title Input */}
-                                    <div>
-                                      <label className={`block text-xs font-semibold mb-2 ${
-                                        isDarkMode ? 'text-white/80' : 'text-slate-700'
-                                      }`}>
-                                        <div className="flex items-center gap-2">
-                                          <Tag size={14} />
-                                          Storm Title
-                                        </div>
-                                      </label>
-                                      <div className="relative">
-                                        <input
-                                          type="text"
-                                          placeholder="e.g. Kristine"
-                                          value={title}
-                                          onChange={(e) => {
-                                            setTitle(e.target.value);
-                                            if (errors.title) setErrors({ ...errors, title: null });
-                                          }}
-                                          onKeyDown={handleKeyDown}
-                                          className={`w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 ${
-                                            errors.title
-                                              ? isDarkMode
-                                                ? 'bg-red-500/10 border-2 border-red-400/50 text-white placeholder:text-red-300/40'
-                                                : 'bg-red-50/50 border-2 border-red-400/50 text-slate-900 placeholder:text-red-500/40'
-                                              : isDarkMode
-                                              ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
-                                              : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
-                                          } backdrop-blur-sm`}
-                                        />
-                                        {errors.title && (
-                                          <p className={`text-xs mt-1.5 ${
-                                            isDarkMode ? 'text-red-400' : 'text-red-600'
-                                          }`}>
-                                            {errors.title}
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                                      </>
+                    <div>
+                      <label
+                        className={`block text-xs font-semibold mb-2 ${
+                          isDarkMode ? 'text-white/80' : 'text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Tag size={14} />
+                          Storm Title
+                        </div>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="e.g. Kristine"
+                          value={title}
+                          onChange={(e) => {
+                            setTitle(e.target.value);
+                            if (errors.title) setErrors({ ...errors, title: null });
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className={`w-full px-4 py-3 rounded-xl outline-none transition-all duration-200 ${
+                            errors.title
+                              ? isDarkMode
+                                ? 'bg-red-500/10 border-2 border-red-400/50 text-white placeholder:text-red-300/40'
+                                : 'bg-red-50/50 border-2 border-red-400/50 text-slate-900 placeholder:text-red-500/40'
+                              : isDarkMode
+                                ? 'bg-white/10 border border-white/20 focus:border-cyan-400/50 focus:bg-white/15 text-white placeholder:text-white/40'
+                                : 'bg-white/50 border border-white/30 focus:border-blue-500/50 focus:bg-white/70 text-slate-900 placeholder:text-slate-500'
+                          } backdrop-blur-sm`}
+                        />
+                        {errors.title && (
+                          <p
+                            className={`text-xs mt-1.5 ${
+                              isDarkMode ? 'text-red-400' : 'text-red-600'
+                            }`}
+                          >
+                            {errors.title}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 {/* Button Group */}
@@ -293,9 +306,11 @@ const ManualInputModal = ({ isOpen, onClose, onSubmit, isDarkMode = false, marke
               </form>
 
               {/* Hint text */}
-              <p className={`text-xs text-center mt-4 ${
-                isDarkMode ? 'text-white/40' : 'text-slate-500'
-              }`}>
+              <p
+                className={`text-xs text-center mt-4 ${
+                  isDarkMode ? 'text-white/40' : 'text-slate-500'
+                }`}
+              >
                 Press Esc to cancel
               </p>
             </div>

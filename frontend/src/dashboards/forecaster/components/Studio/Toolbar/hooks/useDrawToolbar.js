@@ -74,21 +74,34 @@ export function useDrawToolbar({
   }, [projectId]);
 
   // ── Tool selection ───────────────────────────────────────
-  const handleToolClick = useCallback((tool) => {
-    selectedToolRef.current = tool.id;
-    setSelectedToolType(tool.id);
-    setType?.(tool.id);
+  const handleToolClick = useCallback(
+    (tool) => {
+      selectedToolRef.current = tool.id;
+      setSelectedToolType(tool.id);
+      setType?.(tool.id);
 
-    if (isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
-    if (isFlagDrawing) stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
+      if (isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
+      if (isFlagDrawing) stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
 
-    if (tool.modal) {
-      toggleModal(tool.modal, true);
-      return;
-    }
+      if (tool.modal) {
+        toggleModal(tool.modal, true);
+        return;
+      }
 
-    handleDrawModeChange(tool.id, draw, setLayersRef);
-  }, [isDrawing, isFlagDrawing, draw, setLayersRef, selectedToolRef, setType, onToggleCanvas, onToggleFlagCanvas, toggleModal]);
+      handleDrawModeChange(tool.id, draw, setLayersRef);
+    },
+    [
+      isDrawing,
+      isFlagDrawing,
+      draw,
+      setLayersRef,
+      selectedToolRef,
+      setType,
+      onToggleCanvas,
+      onToggleFlagCanvas,
+      toggleModal,
+    ]
+  );
 
   const handleSelectMode = useCallback(() => {
     if (isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
@@ -98,7 +111,15 @@ export function useDrawToolbar({
     setSelectedToolType(null);
     setType?.(null);
     draw?.changeMode?.('simple_select');
-  }, [draw, isDrawing, isFlagDrawing, onToggleCanvas, onToggleFlagCanvas, selectedToolRef, setType]);
+  }, [
+    draw,
+    isDrawing,
+    isFlagDrawing,
+    onToggleCanvas,
+    onToggleFlagCanvas,
+    selectedToolRef,
+    setType,
+  ]);
 
   const handleResetView = useCallback(() => {
     const map = getLatestMapInstance();
@@ -118,69 +139,92 @@ export function useDrawToolbar({
   }, []);
 
   // ── Save helpers ─────────────────────────────────────────
-  const savePoint = useCallback(async ({ lat, lng, coords, title, selectedType, map, labelValue }) => {
-    const savedFeature = await savePointFeature({
-      coords,
-      title,
-      selectedType,
-      setLayersRef,
-      projectId,
-      labelValue,
-    });
-    if (!savedFeature?.sourceId) return;
+  const savePoint = useCallback(
+    async ({ lat, lng, coords, title, selectedType, map, labelValue }) => {
+      const savedFeature = await savePointFeature({
+        coords,
+        title,
+        selectedType,
+        setLayersRef,
+        projectId,
+        labelValue,
+      });
+      if (!savedFeature?.sourceId) return;
 
-    await saveMarker({ lat, lng }, map, setShowTitleModal, selectedType)(
-      savedFeature.labelValue || title,
-      {
+      await saveMarker(
+        { lat, lng },
+        map,
+        setShowTitleModal,
+        selectedType
+      )(savedFeature.labelValue || title, {
         sourceId: savedFeature.sourceId,
         layerId: savedFeature.sourceId,
         displayName: savedFeature.displayName,
         labelValue: savedFeature.labelValue || title,
-      }
-    );
+      });
 
-    selectedToolRef.current = null;
-    setSelectedToolType(null);
-    setType?.(null);
-    setPendingPointInputMethod(null);
-  }, [setLayersRef, projectId, selectedToolRef, setType]);
+      selectedToolRef.current = null;
+      setSelectedToolType(null);
+      setType?.(null);
+      setPendingPointInputMethod(null);
+    },
+    [setLayersRef, projectId, selectedToolRef, setType]
+  );
 
   // ── Map click flow ───────────────────────────────────────
-  const startPointInput = useCallback((method, selectedType, labelValue) => {
-    if (method === 'manual') {
-      toggleModal('manualInput', true);
-      return;
-    }
-
-    if (method === 'map' && MAP_CLICK_TYPES.includes(selectedType)) {
-      console.log('Enabling map click for point input');
-      const map = getLatestMapInstance();
-      console.log('Latest map instance:', map);
-      if (!map) {
-        console.warn('Map is not ready yet.');
+  const startPointInput = useCallback(
+    (method, selectedType, labelValue) => {
+      if (method === 'manual') {
+        toggleModal('manualInput', true);
         return;
       }
 
-      handleDrawModeChange('draw_point', draw, setLayersRef);
-
-      const canvas = map.getCanvas?.();
-      const previousCursor = canvas?.style?.cursor || '';
-
-      const enforcePlacementCursor = () => {
-        if (!canvas?.style) return;
-
-        canvas.dataset.wavelabPlacementCursor = 'crosshair';
-        canvas.style.setProperty('cursor', 'crosshair', 'important');
-      };
-
-      const restorePlacementCursor = () => {
-        if (!canvas?.style) return;
-
-        delete canvas.dataset.wavelabPlacementCursor;
-        canvas.style.removeProperty('cursor');
-        if (previousCursor) {
-          canvas.style.cursor = previousCursor;
+      if (method === 'map' && MAP_CLICK_TYPES.includes(selectedType)) {
+        console.log('Enabling map click for point input');
+        const map = getLatestMapInstance();
+        console.log('Latest map instance:', map);
+        if (!map) {
+          console.warn('Map is not ready yet.');
+          return;
         }
+
+        handleDrawModeChange('draw_point', draw, setLayersRef);
+
+        const canvas = map.getCanvas?.();
+        const previousCursor = canvas?.style?.cursor || '';
+
+        const enforcePlacementCursor = () => {
+          if (!canvas?.style) return;
+
+          canvas.dataset.wavelabPlacementCursor = 'crosshair';
+          canvas.style.setProperty('cursor', 'crosshair', 'important');
+        };
+
+        const restorePlacementCursor = () => {
+          if (!canvas?.style) return;
+
+          delete canvas.dataset.wavelabPlacementCursor;
+          canvas.style.removeProperty('cursor');
+          if (previousCursor) {
+            canvas.style.cursor = previousCursor;
+          }
+
+          [
+            'movestart',
+            'move',
+            'moveend',
+            'zoomstart',
+            'zoom',
+            'zoomend',
+            'dragstart',
+            'drag',
+            'dragend',
+          ].forEach((eventName) => {
+            map.off(eventName, enforcePlacementCursor);
+          });
+        };
+
+        enforcePlacementCursor();
 
         [
           'movestart',
@@ -193,116 +237,113 @@ export function useDrawToolbar({
           'drag',
           'dragend',
         ].forEach((eventName) => {
-          map.off(eventName, enforcePlacementCursor);
+          map.on(eventName, enforcePlacementCursor);
         });
-      };
 
-      enforcePlacementCursor();
+        map.once('click', (e) => {
+          console.log('Map clicked at:', e.lngLat);
+          const lng = e.lngLat.lng;
+          const lat = e.lngLat.lat;
+          const coords = [lng, lat];
 
-      [
-        'movestart',
-        'move',
-        'moveend',
-        'zoomstart',
-        'zoom',
-        'zoomend',
-        'dragstart',
-        'drag',
-        'dragend',
-      ].forEach((eventName) => {
-        map.on(eventName, enforcePlacementCursor);
-      });
+          restorePlacementCursor();
+          draw.changeMode('simple_select');
 
-      map.once('click', (e) => {
-        console.log('Map clicked at:', e.lngLat);
-        const lng = e.lngLat.lng;
-        const lat = e.lngLat.lat;
-        const coords = [lng, lat];
+          if (selectedType === TOOL_IDS.LESS_1) {
+            savePoint({
+              lat,
+              lng,
+              coords,
+              title: labelValue,
+              selectedType,
+              map,
+              labelValue,
+            });
+          } else {
+            console.log('Storing pending map click for marker title input');
+            setPendingMapClick({ lat, lng, coords });
+            toggleModal('markerTitle', true);
+          }
+        });
+      }
+    },
+    [draw, setLayersRef, toggleModal, savePoint]
+  );
 
-        restorePlacementCursor();
-        draw.changeMode('simple_select');
+  const handlePointInputChoice = useCallback(
+    (method) => {
+      toggleModal('pointInputChoice', false);
+      const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
 
-        if (selectedType === TOOL_IDS.LESS_1) {
-          savePoint({
-            lat,
-            lng,
-            coords,
-            title: labelValue,
-            selectedType,
-            map,
-            labelValue,
-          });
-        } else {
-          console.log('Storing pending map click for marker title input');
-          setPendingMapClick({ lat, lng, coords });
-          toggleModal('markerTitle', true);
-        }
-      });
-    }
-  }, [draw, setLayersRef, toggleModal, savePoint]);
+      if (selectedType === TOOL_IDS.LESS_1) {
+        setPendingPointInputMethod(method);
+        toggleModal('lowWaveMarkerChoice', true);
+        return;
+      }
 
-  const handlePointInputChoice = useCallback((method) => {
-    toggleModal('pointInputChoice', false);
-    const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
+      startPointInput(method, selectedType);
+    },
+    [selectedToolRef, startPointInput, toggleModal]
+  );
 
-    if (selectedType === TOOL_IDS.LESS_1) {
-      setPendingPointInputMethod(method);
-      toggleModal('lowWaveMarkerChoice', true);
-      return;
-    }
+  const handleLowWaveMarkerChoice = useCallback(
+    (threshold) => {
+      setLowWaveThreshold(threshold);
+      toggleModal('lowWaveMarkerChoice', false);
 
-    startPointInput(method, selectedType);
-  }, [selectedToolRef, startPointInput, toggleModal]);
+      const method = pendingPointInputMethod;
+      setPendingPointInputMethod(null);
 
-  const handleLowWaveMarkerChoice = useCallback((threshold) => {
-    setLowWaveThreshold(threshold);
-    toggleModal('lowWaveMarkerChoice', false);
-
-    const method = pendingPointInputMethod;
-    setPendingPointInputMethod(null);
-
-    if (method) {
-      startPointInput(method, TOOL_IDS.LESS_1, threshold);
-    }
-  }, [pendingPointInputMethod, startPointInput, toggleModal]);
+      if (method) {
+        startPointInput(method, TOOL_IDS.LESS_1, threshold);
+      }
+    },
+    [pendingPointInputMethod, startPointInput, toggleModal]
+  );
 
   // ── MarkerTitleModal submit (map click flow) ─────────────
-  const handleMarkerTitleSubmit = useCallback((title) => {
-    if (!pendingMapClick) return;
-    const { lat, lng, coords } = pendingMapClick;
-    const selectedType = selectedToolRef.current;
-    const map = getLatestMapInstance();
+  const handleMarkerTitleSubmit = useCallback(
+    (title) => {
+      if (!pendingMapClick) return;
+      const { lat, lng, coords } = pendingMapClick;
+      const selectedType = selectedToolRef.current;
+      const map = getLatestMapInstance();
 
-    savePoint({ lat, lng, coords, title, selectedType, map });
-    setPendingMapClick(null);
-    toggleModal('markerTitle', false);
-  }, [pendingMapClick, selectedToolRef, savePoint, toggleModal]);
+      savePoint({ lat, lng, coords, title, selectedType, map });
+      setPendingMapClick(null);
+      toggleModal('markerTitle', false);
+    },
+    [pendingMapClick, selectedToolRef, savePoint, toggleModal]
+  );
 
   // ── ManualInputModal submit ──────────────────────────────
-  const handleManualInputSubmit = useCallback(async (data) => {
-    const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
-    setType?.(selectedType);
+  const handleManualInputSubmit = useCallback(
+    async (data) => {
+      const selectedType = selectedToolRef.current || TOOL_IDS.LESS_1;
+      setType?.(selectedType);
 
-    const lat = parseFloat(data.lat);
-    const lng = parseFloat(data.lng);
-    const coords = [lng, lat];
-    const title =
-      selectedType === TOOL_IDS.LESS_1
-        ? lowWaveThreshold
-        : data.title || MARKER_LABEL_MAP[selectedType] || MARKER_LABEL_MAP.less_1;
-    const map = getLatestMapInstance();
+      const lat = parseFloat(data.lat);
+      const lng = parseFloat(data.lng);
+      const coords = [lng, lat];
+      const title =
+        selectedType === TOOL_IDS.LESS_1
+          ? lowWaveThreshold
+          : data.title || MARKER_LABEL_MAP[selectedType] || MARKER_LABEL_MAP.less_1;
+      const map = getLatestMapInstance();
 
-    savePoint({
-      lat,
-      lng,
-      coords,
-      title,
-      selectedType,
-      map,
-      labelValue: selectedType === TOOL_IDS.LESS_1 ? lowWaveThreshold : undefined,
-    });
-    toggleModal('manualInput', false);
-  }, [selectedToolRef, setType, savePoint, toggleModal, lowWaveThreshold]);
+      savePoint({
+        lat,
+        lng,
+        coords,
+        title,
+        selectedType,
+        map,
+        labelValue: selectedType === TOOL_IDS.LESS_1 ? lowWaveThreshold : undefined,
+      });
+      toggleModal('manualInput', false);
+    },
+    [selectedToolRef, setType, savePoint, toggleModal, lowWaveThreshold]
+  );
 
   // ── Drawing toggles ──────────────────────────────────────
   const handleToggleDrawing = useCallback(() => {

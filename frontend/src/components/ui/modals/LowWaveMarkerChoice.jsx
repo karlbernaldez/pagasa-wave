@@ -72,11 +72,7 @@ const LowWaveMarkerChoice = ({ isOpen, onClose, onSelect, isDarkMode = false }) 
                 >
                   {option.label}
                 </div>
-                <div
-                  className={`mt-1 text-xs ${
-                    isDarkMode ? 'text-white/60' : 'text-slate-600'
-                  }`}
-                >
+                <div className={`mt-1 text-xs ${isDarkMode ? 'text-white/60' : 'text-slate-600'}`}>
                   {option.description}
                 </div>
               </button>

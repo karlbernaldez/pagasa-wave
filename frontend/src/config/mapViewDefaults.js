@@ -223,8 +223,7 @@ export function resolveStudioMapStyleUrl(settings = {}, isDarkMode = false) {
   if (styleId.startsWith('custom:')) {
     const customId = styleId.slice('custom:'.length);
     return (
-      mapStyle.customStyles.find((style) => style.id === customId)?.url ||
-      DEFAULT_MAP_STYLE_URL
+      mapStyle.customStyles.find((style) => style.id === customId)?.url || DEFAULT_MAP_STYLE_URL
     );
   }
 
@@ -240,12 +239,9 @@ export function normalizeStudioMapViewSettings(settings = {}) {
   const fitBounds = clampBoundsToBounds(
     normalizeBounds(settings.fitBounds, defaults.fitBounds),
     maxBounds,
-    defaults.fitBounds,
+    defaults.fitBounds
   );
-  const center = clampPointToBounds(
-    normalizePoint(settings.center, defaults.center),
-    maxBounds,
-  );
+  const center = clampPointToBounds(normalizePoint(settings.center, defaults.center), maxBounds);
 
   return {
     center,

@@ -3,7 +3,9 @@ import Swal from 'sweetalert2';
 
 export const handleDrawModeChange = (mode, draw, setLayersRef) => {
   if (draw?.changeMode) {
-    if (mode === 'typhoon') { mode = 'draw_point'; } // Normalize to draw_point for typhoon
+    if (mode === 'typhoon') {
+      mode = 'draw_point';
+    } // Normalize to draw_point for typhoon
     // console.log(`Changing draw mode to: ${mode}`);
     draw.changeMode(mode, {
       setLayersRef,
@@ -75,10 +77,11 @@ function getCoordinatePair(coords) {
 
 function makeSafeSourceId(type, name) {
   const safeType = String(type || 'marker').trim() || 'marker';
-  const safeName = String(name || 'Untitled Layer')
-    .trim()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-zA-Z0-9_-]/g, '') || 'Untitled_Layer';
+  const safeName =
+    String(name || 'Untitled Layer')
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_-]/g, '') || 'Untitled_Layer';
 
   return `${safeType}_${safeName}_${Date.now()}`;
 }
@@ -95,9 +98,11 @@ function getLowWaveNumberFromName(value) {
 }
 
 function isLowWaveLayer(layer = {}) {
-  return layer.type === 'less_1'
-    || layer.markerType === 'less_1'
-    || /^Low Wave \(<\s*(?:1|2)\s*m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim());
+  return (
+    layer.type === 'less_1' ||
+    layer.markerType === 'less_1' ||
+    /^Low Wave \(<\s*(?:1|2)\s*m\)(\s+#\d+)?$/i.test(String(layer.name || '').trim())
+  );
 }
 
 function getLowWaveCounterKey(projectId) {
@@ -117,7 +122,8 @@ function getVisibleLowWaveMaxNumber() {
 }
 
 function reserveFallbackLowWaveNumber(projectId) {
-  if (typeof window === 'undefined' || !projectId) return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
+  if (typeof window === 'undefined' || !projectId)
+    return Math.max(1, getVisibleLowWaveMaxNumber() + 1);
 
   try {
     const key = getLowWaveCounterKey(projectId);
@@ -169,7 +175,13 @@ function getMarkerLabelValue(markerType, rawTitle, requestedLabelValue) {
   return rawTitle?.trim() || MARKER_DISPLAY_NAMES[markerType] || 'Untitled Layer';
 }
 
-function getMarkerDisplayName(markerType, rawTitle, layers = [], projectId = '', labelValue = '<1') {
+function getMarkerDisplayName(
+  markerType,
+  rawTitle,
+  layers = [],
+  projectId = '',
+  labelValue = '<1'
+) {
   const trimmedTitle = rawTitle?.trim();
 
   if (markerType === 'less_1') {
@@ -206,7 +218,15 @@ function notifyFeatureSaveFailed(err) {
   });
 }
 
-function buildPointFeaturePayload({ feature, displayName, labelValue, closedMode, activeProjectId, markerType, sourceId }) {
+function buildPointFeaturePayload({
+  feature,
+  displayName,
+  labelValue,
+  closedMode,
+  activeProjectId,
+  markerType,
+  sourceId,
+}) {
   return {
     geometry: feature.geometry,
     properties: {
@@ -273,7 +293,10 @@ export function savePointFeature({
 
   const markerType = normalizeMarkerType(selectedType);
   const rawTitle = title?.trim() || '';
-  const sourceId = makeSafeSourceId(markerType, rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker');
+  const sourceId = makeSafeSourceId(
+    markerType,
+    rawTitle || MARKER_DISPLAY_NAMES[markerType] || 'marker'
+  );
   const labelValue = getMarkerLabelValue(markerType, rawTitle, requestedLabelValue);
   const closedMode = false;
 
@@ -327,24 +350,27 @@ export function savePointFeature({
     };
   };
 
-  const persistFeature = ({ state, refreshOnSuccess = false } = {}) => createFeature(buildPointFeaturePayload({
-    feature: state.feature,
-    displayName: state.displayName,
-    labelValue,
-    closedMode,
-    activeProjectId,
-    markerType,
-    sourceId,
-  }))
-    .then(() => {
-      notifyFeatureSaved(state.displayName);
-      if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
-      return state;
-    })
-    .catch((error) => {
-      notifyFeatureSaveFailed(error);
-      return null;
-    });
+  const persistFeature = ({ state, refreshOnSuccess = false } = {}) =>
+    createFeature(
+      buildPointFeaturePayload({
+        feature: state.feature,
+        displayName: state.displayName,
+        labelValue,
+        closedMode,
+        activeProjectId,
+        markerType,
+        sourceId,
+      })
+    )
+      .then(() => {
+        notifyFeatureSaved(state.displayName);
+        if (refreshOnSuccess) refreshWorkspaceAfterFallbackSave();
+        return state;
+      })
+      .catch((error) => {
+        notifyFeatureSaveFailed(error);
+        return null;
+      });
 
   if (!updateLayers) {
     const state = buildFeatureState([]);
@@ -371,7 +397,6 @@ export function savePointFeature({
     return savedState;
   });
 }
-
 
 // export const handleKeyPress = (
 //   event, tools, draw, isDrawing, toggleDrawing,
@@ -415,15 +440,18 @@ export function savePointFeature({
 //   // Handle stop drawing with 'x'
 //   if (key === 'x' && isDrawing) stopDrawing(setIsDrawing, onToggleCanvas);
 
-
 // };
 
 export const toggleDrawing = (isDrawing, setIsDrawing, onToggleCanvas) => {
-  isDrawing ? stopDrawing(setIsDrawing, onToggleCanvas) : startDrawing(setIsDrawing, onToggleCanvas);
+  isDrawing
+    ? stopDrawing(setIsDrawing, onToggleCanvas)
+    : startDrawing(setIsDrawing, onToggleCanvas);
 };
 
 export const toggleFlagDrawing = (isFlagDrawing, setIsFlagDrawing, onToggleFlagCanvas) => {
-  isFlagDrawing ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas) : startFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
+  isFlagDrawing
+    ? stopFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas)
+    : startFlagDrawing(setIsFlagDrawing, onToggleFlagCanvas);
 };
 
 export const startDrawing = (setIsDrawing, onToggleCanvas) => {
@@ -447,5 +475,5 @@ export const stopFlagDrawing = (setIsFlagDrawing, onToggleFlagCanvas) => {
 };
 
 export const toggleCollapse = (setIsCollapsed) => {
-  setIsCollapsed(prev => !prev);
+  setIsCollapsed((prev) => !prev);
 };
