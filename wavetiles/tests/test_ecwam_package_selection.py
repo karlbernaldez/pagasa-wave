@@ -18,6 +18,33 @@ SPEC.loader.exec_module(selection)
 class ECWAMPackageSelectionTests(unittest.TestCase):
     package_date = selection.parse_package_date("2026-08-24")
 
+    def setUp(self) -> None:
+        self._policy_dir = tempfile.TemporaryDirectory()
+        self._previous_policy_path = os.environ.get("WAVE_SOURCE_CYCLE_POLICY_PATH")
+        policy_path = Path(self._policy_dir.name) / "source-cycle-policy.json"
+        policy_path.write_text(
+            json.dumps(
+                {
+                    "schemaVersion": 1,
+                    "models": {
+                        "ECWAM": {
+                            "preferredHourUtc": 18,
+                            "cycleDateMode": "automatic",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        os.environ["WAVE_SOURCE_CYCLE_POLICY_PATH"] = str(policy_path)
+
+    def tearDown(self) -> None:
+        if self._previous_policy_path is None:
+            os.environ.pop("WAVE_SOURCE_CYCLE_POLICY_PATH", None)
+        else:
+            os.environ["WAVE_SOURCE_CYCLE_POLICY_PATH"] = self._previous_policy_path
+        self._policy_dir.cleanup()
+
     def make_cycle(self, root: Path, cycle: str, valid_times: tuple[datetime, ...]) -> Path:
         cycle_dir = root / cycle
         cycle_dir.mkdir()
