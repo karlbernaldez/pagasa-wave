@@ -273,6 +273,7 @@ export const syncWaveRasterLayers = (
     opacity,
     showRaster,
     forecastPackage,
+    beforeId,
   });
 
   ['wave-glass-fill', 'wave-glass-depth'].forEach((id) => {
