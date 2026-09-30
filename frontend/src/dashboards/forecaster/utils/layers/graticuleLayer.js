@@ -23,15 +23,23 @@ export function normalizeGraticuleOpacity(value, fallback = DEFAULT_GRATICULE_OP
 
 export function readStoredGraticuleSpacing(fallback = DEFAULT_GRATICULE_SPACING) {
   if (typeof window === 'undefined') return fallback;
-  return normalizeGraticuleSpacing(window.localStorage.getItem(GRATICULE_STORAGE_KEY), fallback);
+  const stored = window.localStorage.getItem(GRATICULE_STORAGE_KEY);
+  if (stored === null || stored === '') return fallback;
+  return normalizeGraticuleSpacing(stored, fallback);
 }
 
 export function readStoredGraticuleOpacity(fallback = DEFAULT_GRATICULE_OPACITY) {
   if (typeof window === 'undefined') return fallback;
-  return normalizeGraticuleOpacity(
-    window.localStorage.getItem(GRATICULE_OPACITY_STORAGE_KEY),
-    fallback
-  );
+  const stored = window.localStorage.getItem(GRATICULE_OPACITY_STORAGE_KEY);
+  if (stored === null || stored === '') return fallback;
+  return normalizeGraticuleOpacity(stored, fallback);
+}
+
+export function readStoredGraticulePreferences() {
+  return {
+    spacing: readStoredGraticuleSpacing(DEFAULT_GRATICULE_SPACING),
+    opacity: readStoredGraticuleOpacity(DEFAULT_GRATICULE_OPACITY),
+  };
 }
 
 export function buildGraticuleFeatureCollection(spacing = DEFAULT_GRATICULE_SPACING) {
