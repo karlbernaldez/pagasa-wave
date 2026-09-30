@@ -8,6 +8,7 @@ import { addWaveLayer } from '@dashboards/forecaster/map/layers/waveLayer';
 import { ensureEcwamFrameReady } from '@/api/ecwamFrames';
 import { WAVE_ELEMENTS, OFF_ELEMENTS, DEFAULT_DIRECTION_STYLE } from '../constants/layerConstants';
 import { normalizeModelName } from './waveConfig/waveHelpers';
+import { fetchWavePackageMetadata } from './waveConfig/wavePackageMetadata';
 import {
   getECWAMForecastHours,
   getWW3ForecastHours,
@@ -37,6 +38,12 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const ecwamRequestRef = useRef(0);
   const { chartType, forecastDate } = useProjectData();
   const packageKey = `${forecastDate ?? ''}|${chartType ?? ''}`;
+  const metadataKey = String(forecastDate ?? '');
+  const [packageMetadata, setPackageMetadata] = useState(() => ({
+    key: null,
+    WW3: null,
+    ECWAM: null,
+  }));
   const ww3ForecastHours = useMemo(() => getWW3ForecastHours(chartType), [chartType]);
   const defaultWW3ForecastHour = useMemo(
     () => resolveWW3ForecastRun({ chartType, forecastDate }).forecastHour,
@@ -67,6 +74,9 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     : defaultEcwamForecastHour;
   const visibleEcwamFrameState =
     ecwamFrameState.packageKey === packageKey ? ecwamFrameState : IDLE_ECWAM_FRAME;
+  const metadataMatchesPackage = packageMetadata.key === metadataKey;
+  const ww3SourceCycle = metadataMatchesPackage ? packageMetadata.WW3?.sourceCycle || null : null;
+  const ecwamSourceCycle = metadataMatchesPackage ? packageMetadata.ECWAM?.sourceCycle || null : null;
   const forecastPackage = useMemo(
     () => ({
       chartType,
@@ -74,8 +84,18 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       ww3ForecastHour,
       ecwamForecastHour,
       ecwamFrameReady,
+      ww3SourceCycle,
+      ecwamSourceCycle,
     }),
-    [chartType, forecastDate, ww3ForecastHour, ecwamForecastHour, ecwamFrameReady]
+    [
+      chartType,
+      forecastDate,
+      ww3ForecastHour,
+      ecwamForecastHour,
+      ecwamFrameReady,
+      ww3SourceCycle,
+      ecwamSourceCycle,
+    ]
   );
 
   const { readWaveStorage, saveEnabled, saveModels, saveElements, saveDirectionStyle } =
@@ -106,6 +126,31 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   useEffect(() => {
     ecwamRequestRef.current += 1;
   }, [packageKey]);
+
+  useEffect(() => {
+    if (!forecastDate) {
+      setPackageMetadata({ key: metadataKey, WW3: null, ECWAM: null });
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    Promise.allSettled([
+      fetchWavePackageMetadata({ model: 'WW3', forecastDate }),
+      fetchWavePackageMetadata({ model: 'ECWAM', forecastDate }),
+    ]).then(([ww3Result, ecwamResult]) => {
+      if (cancelled) return;
+      setPackageMetadata({
+        key: metadataKey,
+        WW3: ww3Result.status === 'fulfilled' ? ww3Result.value : null,
+        ECWAM: ecwamResult.status === 'fulfilled' ? ecwamResult.value : null,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [forecastDate, metadataKey]);
 
   const setEcwamForecastHour = useCallback(
     async (nextValue) => {
