@@ -18,7 +18,7 @@ import {
   assertReviewChecklistAllowsApproval,
   createPackageReviewChecklist,
 } from '../services/reviewChecklistService.js';
-import { queuePublishedPackagePdfGeneration } from '../services/publishedPdfArtifactService.js';
+import { initializePublishedPackageArtifacts } from '../services/publishedPdfArtifactService.js';
 
 const EDITABLE_PACKAGE_STATUSES = [
   FORECAST_PACKAGE_STATUS.DRAFT,
@@ -772,7 +772,9 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
 
-  queuePublishedPackagePdfGeneration(forecastPackage._id);
+  initializePublishedPackageArtifacts(forecastPackage._id).catch((error) => {
+    console.error('[PublishedPdf] Failed to initialize published artifacts:', error);
+  });
 });
 
 export const archiveForecastPackage = asyncHandler(async (req, res) => {
