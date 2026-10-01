@@ -362,10 +362,7 @@ export async function ensurePublishedPdfArtifactForDate(dateKey, style) {
   const result = await getPublishedPdfArtifactForDate(dateKey, style);
   if (!result) return null;
 
-  if (
-    !result.artifact ||
-    ['pending', 'generating', 'failed'].includes(result.artifact.status)
-  ) {
+  if (!result.artifact || ['pending', 'generating', 'failed'].includes(result.artifact.status)) {
     queuePublishedPackagePdfGeneration(result.forecastPackage._id);
   }
 
