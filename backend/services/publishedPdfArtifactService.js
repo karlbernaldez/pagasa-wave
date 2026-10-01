@@ -5,10 +5,7 @@ import path from 'node:path';
 import puppeteer from 'puppeteer';
 
 import ForecastPackage from '../models/ForecastPackage.js';
-import {
-  FORECAST_PACKAGE_STATUS,
-  REQUIRED_FORECAST_CHARTS,
-} from '../utils/forecastPackage.js';
+import { FORECAST_PACKAGE_STATUS, REQUIRED_FORECAST_CHARTS } from '../utils/forecastPackage.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const PDF_STYLES = Object.freeze([
@@ -218,12 +215,7 @@ async function generateStyleArtifact(browser, forecastPackage, style) {
     const page = await browser.newPage();
     try {
       await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: 1 });
-      const imageDataUrl = await capturePublishedChart(
-        page,
-        origin,
-        String(project._id),
-        style
-      );
+      const imageDataUrl = await capturePublishedChart(page, origin, String(project._id), style);
       charts.push({
         slot: { ...slot, badge: slot.label.replace(' Wave Forecast', '').toUpperCase() },
         project,
