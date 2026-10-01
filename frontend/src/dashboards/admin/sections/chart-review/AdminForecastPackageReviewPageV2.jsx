@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useBlocker, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AlertCircle, FolderKanban } from 'lucide-react';
 
 import {
@@ -151,29 +151,41 @@ export default function AdminForecastPackageReviewPageV2() {
   const artifactCaptureActive = Boolean(
     artifactCaptureJob && artifactCaptureProgress?.status !== 'failed'
   );
-  const navigationBlocker = useBlocker(artifactCaptureActive);
-
-  useEffect(() => {
-    if (navigationBlocker.state !== 'blocked') return;
-
-    const shouldLeave = window.confirm(
-      'Published PDF artifacts are still being prepared. Leaving now will pause snapshot capture. Continue anyway?'
-    );
-
-    if (shouldLeave) navigationBlocker.proceed();
-    else navigationBlocker.reset();
-  }, [navigationBlocker]);
 
   useEffect(() => {
     if (!artifactCaptureActive) return undefined;
+
+    const confirmLeave = () =>
+      window.confirm(
+        'Published PDF artifacts are still being prepared. Leaving now will pause snapshot capture. Continue anyway?'
+      );
+
+    const handleDocumentClick = (event) => {
+      const anchor = event.target?.closest?.('a[href]');
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#')) return;
+
+      const target = new URL(anchor.href, window.location.href);
+      if (target.origin !== window.location.origin || confirmLeave()) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+    };
 
     const handleBeforeUnload = (event) => {
       event.preventDefault();
       event.returnValue = '';
     };
 
+    document.addEventListener('click', handleDocumentClick, true);
     window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      document.removeEventListener('click', handleDocumentClick, true);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, [artifactCaptureActive]);
 
   const query = useQuery({
@@ -268,6 +280,15 @@ export default function AdminForecastPackageReviewPageV2() {
     setFeedbackError('');
     const projectId = getId(project);
     if (!projectId) return;
+
+    if (
+      artifactCaptureActive &&
+      !window.confirm(
+        'Published PDF artifacts are still being prepared. Opening another chart will pause snapshot capture. Continue anyway?'
+      )
+    ) {
+      return;
+    }
 
     if (isProjectPublished(project?.status)) {
       navigate(`/charts/${projectId}`);
