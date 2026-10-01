@@ -640,7 +640,7 @@ export default function Charts() {
 
     const timer = window.setInterval(() => {
       if (updateReadyCount()) window.clearInterval(timer);
-    }, 0);
+    }, 250);
     return () => window.clearInterval(timer);
   }, [activeStyleMode, exportEntries, pdfReadinessKey]);
 
@@ -715,6 +715,7 @@ export default function Charts() {
         entry.project?._id && hasExportableOutput(entry.output) ? (
           <PublishedForecastExportMap
             key={`export-${entry.project._id}-${activeStyleMode}`}
+            projectId={entry.project._id}
             ref={(instance) => {
               if (instance) exportRefs.current[entry.slot.chartType] = instance;
             }}
