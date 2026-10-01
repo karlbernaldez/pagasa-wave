@@ -63,6 +63,42 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
+function getSafeUrlForLog(value) {
+  try {
+    const parsed = new URL(String(value || ''));
+    return `${parsed.origin}${parsed.pathname}`;
+  } catch {
+    return String(value || '').split('?')[0].split('#')[0];
+  }
+}
+
+function attachPageDiagnostics(page, context) {
+  page.on('pageerror', (error) => {
+    console.error('[PublishedPdf] Browser page error', {
+      ...context,
+      message: error?.message || String(error),
+    });
+  });
+
+  page.on('requestfailed', (request) => {
+    console.error('[PublishedPdf] Browser request failed', {
+      ...context,
+      url: getSafeUrlForLog(request.url()),
+      method: request.method(),
+      failure: request.failure()?.errorText || 'unknown',
+    });
+  });
+
+  page.on('response', (response) => {
+    if (response.status() < 400) return;
+    console.error('[PublishedPdf] Browser HTTP error', {
+      ...context,
+      status: response.status(),
+      url: getSafeUrlForLog(response.url()),
+    });
+  });
+}
+
 function getSourceRevision(forecastPackage) {
   const chartRevisions = (forecastPackage.charts || []).map((chart) => {
     const project = chart.project;
@@ -213,14 +249,24 @@ async function generateStyleArtifact(browser, forecastPackage, style) {
     }
 
     const page = await browser.newPage();
+    const projectId = String(project._id);
+    const diagnosticContext = {
+      packageId: String(forecastPackage._id),
+      projectId,
+      chartType: slot.chartType,
+      style,
+    };
+    attachPageDiagnostics(page, diagnosticContext);
     try {
+      console.info('[PublishedPdf] Capturing published chart', diagnosticContext);
       await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: 1 });
-      const imageDataUrl = await capturePublishedChart(page, origin, String(project._id), style);
+      const imageDataUrl = await capturePublishedChart(page, origin, projectId, style);
       charts.push({
         slot: { ...slot, badge: slot.label.replace(' Wave Forecast', '').toUpperCase() },
         project,
         imageDataUrl,
       });
+      console.info('[PublishedPdf] Published chart captured', diagnosticContext);
     } finally {
       await page.close();
     }
@@ -306,9 +352,16 @@ async function generatePackageArtifacts(packageId) {
           error: '',
         });
       } catch (error) {
+        const errorMessage = String(error?.message || error).slice(0, 1000);
+        console.error('[PublishedPdf] Style generation failed', {
+          packageId: String(forecastPackage._id),
+          style,
+          message: errorMessage,
+          stack: error?.stack,
+        });
         updateArtifact(forecastPackage, style, {
           status: 'failed',
-          error: String(error?.message || error).slice(0, 1000),
+          error: errorMessage,
           generatedAt: null,
         });
       }
