@@ -471,6 +471,8 @@ function PublicPublishedChartPreviewMap({
     <div
       className={`relative overflow-hidden ${className}`}
       style={{ height: getPreviewHeight(height) }}
+      data-published-chart-map={projectId || ''}
+      data-map-ready={!loading && isReady ? 'true' : 'false'}
     >
       {onClick && (
         <button

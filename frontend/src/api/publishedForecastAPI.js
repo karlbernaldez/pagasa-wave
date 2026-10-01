@@ -155,3 +155,19 @@ export const fetchPublicPublishedCharts = ({
 export const fetchPublishedForecastOutput = fetchPublishedChartOutput;
 export const fetchPublicPublishedForecastOutput = fetchPublicPublishedChartOutput;
 export const fetchPublicPublishedForecasts = fetchPublicPublishedCharts;
+
+export const fetchPublicPublishedPdfStatus = ({ date, style, signal } = {}) => {
+  if (!date || !style) {
+    return Promise.reject(new Error('Missing published PDF date or style'));
+  }
+
+  const params = new URLSearchParams({ date, style });
+  return request(`${PROJECT_API_BASE_URL}/public/published-pdf/status?${params.toString()}`, {
+    signal,
+  });
+};
+
+export const getPublicPublishedPdfDownloadUrl = ({ date, style } = {}) => {
+  const params = new URLSearchParams({ date: date || '', style: style || '' });
+  return `${PROJECT_API_BASE_URL}/public/published-pdf/download?${params.toString()}`;
+};

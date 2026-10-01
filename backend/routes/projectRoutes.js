@@ -31,6 +31,10 @@ import {
   listPublicPublishedForecasts,
 } from '../controllers/publishedForecastController.js';
 import { recordPublicPublishedChartView } from '../controllers/publishedChartViewController.js';
+import {
+  downloadPublicPublishedPdf,
+  getPublicPublishedPdfStatus,
+} from '../controllers/publishedPdfController.js';
 import Project from '../models/Project.js';
 import ForecastPackage from '../models/ForecastPackage.js';
 
@@ -147,6 +151,8 @@ const canViewProject = requireAnyPermission(
 );
 
 router.get('/public/published', listPublicPublishedForecasts);
+router.get('/public/published-pdf/status', getPublicPublishedPdfStatus);
+router.get('/public/published-pdf/download', downloadPublicPublishedPdf);
 router.get('/public/published/:id', getPublicPublishedForecastOutput);
 router.post('/public/published/:id/view', publishedViewLimiter, recordPublicPublishedChartView);
 

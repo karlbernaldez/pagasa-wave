@@ -63,6 +63,8 @@ make_path_traversable() {
 
 mkdir -p /etc/wavelab
 mkdir -p "$APP_ROOT/backend/logs" "$APP_ROOT/backend/frames" "$APP_ROOT/backend/public" "$APP_ROOT/backend/tmp"
+PUBLISHED_PDF_ROOT="/var/lib/wavelab/published-pdfs"
+mkdir -p "$PUBLISHED_PDF_ROOT"
 WAVETILES_ROOT="$APP_ROOT/wavetiles/tiles"
 PIPELINE_RUNTIME_ROOT="$APP_ROOT/wavetiles/.normalized-product-stage"
 PIPELINE_HISTORY_ROOT="$PIPELINE_RUNTIME_ROOT/.history"
@@ -72,6 +74,7 @@ chown -R "$APP_USER:$APP_GROUP" \
   "$APP_ROOT/backend/frames" \
   "$APP_ROOT/backend/public" \
   "$APP_ROOT/backend/tmp" \
+  "$PUBLISHED_PDF_ROOT" \
   "$WAVETILES_ROOT" \
   "$PIPELINE_RUNTIME_ROOT"
 
@@ -82,6 +85,13 @@ if [[ ! -f "$BACKEND_ENV" ]]; then
   chown root:root "$BACKEND_ENV"
   echo "Created $BACKEND_ENV from example. Add real secrets and run deployment again." >&2
   exit 2
+fi
+
+if ! grep -q "^PUBLIC_ORIGIN=" "$BACKEND_ENV"; then
+  printf '\nPUBLIC_ORIGIN=%s\n' "$PUBLIC_ORIGIN" >> "$BACKEND_ENV"
+fi
+if ! grep -q "^PUBLISHED_PDF_DIR=" "$BACKEND_ENV"; then
+  printf 'PUBLISHED_PDF_DIR=%s\n' "$PUBLISHED_PDF_ROOT" >> "$BACKEND_ENV"
 fi
 
 if grep -q "replace-with" "$BACKEND_ENV" || grep -q "mongodb+srv://USER:PASSWORD" "$BACKEND_ENV"; then
