@@ -505,10 +505,12 @@ export const listPublicPublishedForecasts = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    projects: projects.map((project) => ({
-      ...getPublicProjectPayload(project),
-      raster: resolveCogRaster(project, { theme }),
-    })),
+    projects: await Promise.all(
+      projects.map(async (project) => ({
+        ...getPublicProjectPayload(project),
+        raster: await resolveCogRaster(project, { theme }),
+      }))
+    ),
     total,
     page,
     limit,
