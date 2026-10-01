@@ -628,7 +628,6 @@ export default function Charts() {
     };
   }, [activeDate, activeStyleMode, availableCount, serverPdfKey]);
 
-
   useEffect(() => {
     const controller = new AbortController();
     exportRefs.current = {};
