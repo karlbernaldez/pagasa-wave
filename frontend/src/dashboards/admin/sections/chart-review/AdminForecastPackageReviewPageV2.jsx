@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useBlocker, useNavigate } from 'react-router-dom';
 import { AlertCircle, FolderKanban } from 'lucide-react';
 
 import {
@@ -88,6 +88,16 @@ function filterPackages(packages, search, typeFilter) {
   });
 }
 
+function getArtifactProgress(readiness, charts = []) {
+  const styles = Object.values(readiness?.styles || {});
+  const completed = styles.reduce((total, style) => total + (style?.readyCount || 0), 0);
+  return {
+    completed,
+    total: charts.length * 3,
+    status: completed >= charts.length * 3 && charts.length > 0 ? 'complete' : 'capturing',
+  };
+}
+
 function getEmptyStateCopy({ hasFilters }) {
   if (hasFilters) {
     return {
@@ -138,6 +148,34 @@ export default function AdminForecastPackageReviewPageV2() {
   const [artifactCaptureProgress, setArtifactCaptureProgress] = useState(null);
   const checkedArtifactPackagesRef = useRef(new Set());
 
+  const artifactCaptureActive = Boolean(
+    artifactCaptureJob && artifactCaptureProgress?.status !== 'failed'
+  );
+  const navigationBlocker = useBlocker(artifactCaptureActive);
+
+  useEffect(() => {
+    if (navigationBlocker.state !== 'blocked') return;
+
+    const shouldLeave = window.confirm(
+      'Published PDF artifacts are still being prepared. Leaving now will pause snapshot capture. Continue anyway?'
+    );
+
+    if (shouldLeave) navigationBlocker.proceed();
+    else navigationBlocker.reset();
+  }, [navigationBlocker]);
+
+  useEffect(() => {
+    if (!artifactCaptureActive) return undefined;
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [artifactCaptureActive]);
+
   const query = useQuery({
     queryKey: ['admin-forecast-packages', page, statusFilter],
     queryFn: ({ signal }) =>
@@ -187,14 +225,14 @@ export default function AdminForecastPackageReviewPageV2() {
         const styles = Object.values(readiness?.styles || {});
         if (!styles.some((style) => !style.ready)) return;
 
+        const charts = publishedPackageForBackfill.charts || [];
         setArtifactCaptureJob({
           packageId,
-          charts: publishedPackageForBackfill.charts || [],
+          charts,
+          initialReadiness: readiness,
+          runId: 0,
         });
-        setArtifactCaptureProgress({
-          completed: 0,
-          total: (publishedPackageForBackfill.charts || []).length * 3,
-        });
+        setArtifactCaptureProgress(getArtifactProgress(readiness, charts));
       })
       .catch((error) => {
         if (error?.name !== 'AbortError') {
@@ -274,20 +312,44 @@ export default function AdminForecastPackageReviewPageV2() {
 
       await Promise.all(publishableCharts.map((project) => publishProject(getId(project))));
       await publishForecastPackage(packageId);
+
+      const charts = forecastPackage.charts || [];
+      const readiness = await fetchPublishedArtifactReadiness(packageId);
+      checkedArtifactPackagesRef.current.add(packageId);
       setArtifactCaptureJob({
         packageId,
-        charts: forecastPackage.charts || [],
+        charts,
+        initialReadiness: readiness,
+        runId: 0,
       });
-      setArtifactCaptureProgress({
-        completed: 0,
-        total: (forecastPackage.charts || []).length * 3,
-      });
+      setArtifactCaptureProgress(getArtifactProgress(readiness, charts));
       await query.refetch();
     } catch (error) {
       console.error('Failed to publish forecast package:', error);
       setFeedbackError(error?.message || 'Failed to publish forecast package.');
     } finally {
       setPublishingPackageId(null);
+    }
+  };
+
+  const retryArtifactCapture = async () => {
+    if (!artifactCaptureJob?.packageId) return;
+
+    setFeedbackError('');
+    try {
+      const readiness = await fetchPublishedArtifactReadiness(artifactCaptureJob.packageId);
+      setArtifactCaptureJob((current) =>
+        current
+          ? {
+              ...current,
+              initialReadiness: readiness,
+              runId: (current.runId || 0) + 1,
+            }
+          : current
+      );
+      setArtifactCaptureProgress(getArtifactProgress(readiness, artifactCaptureJob.charts || []));
+    } catch (error) {
+      setFeedbackError(error?.message || 'Failed to restart published PDF artifact preparation.');
     }
   };
 
@@ -320,20 +382,28 @@ export default function AdminForecastPackageReviewPageV2() {
     <>
       {artifactCaptureJob && (
         <PublishedArtifactCaptureJob
+          key={`${artifactCaptureJob.packageId}:${artifactCaptureJob.runId || 0}`}
           packageId={artifactCaptureJob.packageId}
           charts={artifactCaptureJob.charts}
+          initialReadiness={artifactCaptureJob.initialReadiness}
           onProgress={setArtifactCaptureProgress}
           onComplete={() => {
             console.info('[PublishedPdf] Published chart snapshots completed');
             setArtifactCaptureJob(null);
-            setArtifactCaptureProgress(null);
+            setArtifactCaptureProgress((current) => ({
+              ...(current || {}),
+              completed: current?.total || current?.completed || 0,
+              status: 'complete',
+            }));
             void query.refetch();
           }}
           onError={(message) => {
             console.error('[PublishedPdf] Published snapshot capture failed:', message);
             setFeedbackError(message);
-            setArtifactCaptureJob(null);
-            setArtifactCaptureProgress(null);
+            setArtifactCaptureProgress((current) => ({
+              ...(current || {}),
+              status: 'failed',
+            }));
           }}
         />
       )}
@@ -347,8 +417,35 @@ export default function AdminForecastPackageReviewPageV2() {
                 : 'border-cyan-200 bg-cyan-50/85 text-cyan-800'
             }`}
           >
-            Preparing published PDF artifacts: {artifactCaptureProgress.completed}/
-            {artifactCaptureProgress.total} chart snapshots stored.
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>
+                {artifactCaptureProgress.status === 'complete'
+                  ? 'Published chart snapshots complete'
+                  : artifactCaptureProgress.status === 'failed'
+                    ? 'Published PDF artifact preparation paused'
+                    : artifactCaptureProgress.status === 'retrying'
+                      ? 'Retrying published chart capture'
+                      : 'Preparing published PDF artifacts'}
+                : {artifactCaptureProgress.completed}/{artifactCaptureProgress.total} chart snapshots
+                stored.
+              </span>
+              {artifactCaptureProgress.status === 'failed' && artifactCaptureJob && (
+                <Button size="sm" variant="secondary" onClick={retryArtifactCapture}>
+                  Retry preparation
+                </Button>
+              )}
+            </div>
+            {artifactCaptureProgress.status === 'retrying' && artifactCaptureProgress.chartType && (
+              <p className="mt-1 text-xs font-bold opacity-80">
+                {artifactCaptureProgress.chartType} ({artifactCaptureProgress.style}) - attempt{' '}
+                {artifactCaptureProgress.attempt || 2}
+              </p>
+            )}
+            {artifactCaptureProgress.status === 'complete' && (
+              <p className="mt-1 text-xs font-bold opacity-80">
+                All snapshots are stored. Cached PDF composition has been queued.
+              </p>
+            )}
           </div>
         )}
 
