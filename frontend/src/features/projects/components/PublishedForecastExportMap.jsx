@@ -616,12 +616,20 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
   const markReadyCapture = (signature) => {
     const map = mapRef.current;
-    if (!map || !hasRenderableContent || !isMapStyleReady(map)) return false;
+    if (!map || !hasRenderableContent) return false;
 
-    readySignatureRef.current = signature;
-    readyDataUrlRef.current = map.getCanvas().toDataURL('image/png');
-    setIsReady(true);
-    return true;
+    try {
+      const imageDataUrl = map.getCanvas().toDataURL('image/png');
+      if (!imageDataUrl) return false;
+
+      readySignatureRef.current = signature;
+      readyDataUrlRef.current = imageDataUrl;
+      setIsReady(true);
+      return true;
+    } catch (error) {
+      console.warn('[PublishedForecastExportMap] Canvas capture failed:', error);
+      return false;
+    }
   };
 
   const renderExport = () => {
@@ -658,8 +666,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
         !mapRef.current ||
         !hasRenderableContent ||
         readySignatureRef.current !== renderSignature ||
-        !readyDataUrlRef.current ||
-        !isMapStyleReady(mapRef.current)
+        !readyDataUrlRef.current
       ) {
         throw new Error('Map is still preparing for export. Please try again in a moment.');
       }
@@ -671,8 +678,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
         mapRef.current &&
         hasRenderableContent &&
         readySignatureRef.current === renderSignature &&
-        readyDataUrlRef.current &&
-        isMapStyleReady(mapRef.current)
+        readyDataUrlRef.current
       );
     },
   }));
@@ -723,7 +729,13 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       captureScheduled = true;
       firstFrame = window.requestAnimationFrame(() => {
         secondFrame = window.requestAnimationFrame(() => {
-          if (!cancelled) markReadyCapture(signature);
+          if (cancelled) return;
+
+          const captured = markReadyCapture(signature);
+          if (!captured) {
+            captureScheduled = false;
+            retryTimer = window.setTimeout(renderWhenReady, 250);
+          }
         });
       });
     };
