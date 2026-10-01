@@ -156,7 +156,6 @@ export const fetchPublishedForecastOutput = fetchPublishedChartOutput;
 export const fetchPublicPublishedForecastOutput = fetchPublicPublishedChartOutput;
 export const fetchPublicPublishedForecasts = fetchPublicPublishedCharts;
 
-
 export const fetchPublicPublishedPdfStatus = ({ date, style, signal } = {}) => {
   if (!date || !style) {
     return Promise.reject(new Error('Missing published PDF date or style'));
