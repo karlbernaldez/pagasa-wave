@@ -590,7 +590,10 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const resolvedRaster = raster || fetchedRaster;
   const hasRenderableContent =
     hasFeatures || hasBoundary || Boolean(shouldRenderRaster && resolvedRaster?.tileUrl);
-  const projectId = useMemo(() => providedProjectId || getProjectIdFromLocation(), [providedProjectId]);
+  const projectId = useMemo(
+    () => providedProjectId || getProjectIdFromLocation(),
+    [providedProjectId]
+  );
   const theme = isDarkMode ? 'dark' : 'light';
   const mapBoundsSignature = useMemo(() => JSON.stringify(mapBounds), [mapBounds]);
   const boundarySignature = useMemo(
