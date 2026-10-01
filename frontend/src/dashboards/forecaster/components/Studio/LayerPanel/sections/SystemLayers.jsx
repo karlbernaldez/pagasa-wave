@@ -28,13 +28,7 @@ import { useProjectData } from '../../Menu/hooks/useProjectData';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 const WAVE_SYNC_STORAGE_KEY = 'WAVE_SYNC_FORECAST_HOURS';
-const WAVE_PROCESSING_STATES = new Set([
-  'checking',
-  'processing',
-  'building',
-  'available',
-  'busy',
-]);
+const WAVE_PROCESSING_STATES = new Set(['checking', 'processing', 'building', 'available', 'busy']);
 
 const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   <div className="flex items-center justify-between px-1">
