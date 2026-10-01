@@ -130,6 +130,33 @@ const ForecastPackageCompletionSchema = new Schema(
   { _id: false }
 );
 
+const ForecastPackagePublishedChartSnapshotSchema = new Schema(
+  {
+    style: {
+      type: String,
+      enum: ['wave-wind', 'wave-only', 'visually-impaired'],
+      required: true,
+    },
+    chartType: {
+      type: String,
+      enum: REQUIRED_FORECAST_CHART_TYPES,
+      required: true,
+    },
+    project: {
+      type: Schema.Types.ObjectId,
+      ref: 'Project',
+      required: true,
+    },
+    filePath: { type: String, default: '' },
+    fileName: { type: String, default: '' },
+    fileSize: { type: Number, default: 0 },
+    sha256: { type: String, default: '' },
+    sourceRevision: { type: String, default: '' },
+    capturedAt: { type: Date, default: null },
+  },
+  { _id: false }
+);
+
 const ForecastPackagePdfArtifactSchema = new Schema(
   {
     style: {
@@ -241,6 +268,10 @@ const ForecastPackageSchema = new Schema(
     publishedAt: Date,
     archivedAt: Date,
     archivedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    publishedChartSnapshots: {
+      type: [ForecastPackagePublishedChartSnapshotSchema],
+      default: [],
+    },
     publishedPdfArtifacts: { type: [ForecastPackagePdfArtifactSchema], default: [] },
     auditLogs: [ForecastPackageAuditLogSchema],
   },
