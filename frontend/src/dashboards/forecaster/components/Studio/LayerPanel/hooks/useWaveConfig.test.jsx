@@ -6,6 +6,9 @@ import { useWaveConfig } from './useWaveConfig';
 
 const mocks = vi.hoisted(() => ({
   addWaveLayer: vi.fn(() => Promise.resolve()),
+  fetchWavePackageMetadata: vi.fn(({ model }) =>
+    Promise.resolve({ model, sourceCycle: '2026080400' })
+  ),
   ensureEcwamFrameReady: vi.fn(() => Promise.resolve({ state: 'ready' })),
   projectData: {
     chartType: 'analysis',
@@ -30,6 +33,10 @@ vi.mock('@dashboards/forecaster/map/layers/waveLayer', () => ({
 
 vi.mock('@/api/ecwamFrames', () => ({
   ensureEcwamFrameReady: mocks.ensureEcwamFrameReady,
+}));
+
+vi.mock('./waveConfig/wavePackageMetadata', () => ({
+  fetchWavePackageMetadata: mocks.fetchWavePackageMetadata,
 }));
 
 vi.mock('./waveConfig/waveLayerSync', () => ({
@@ -81,6 +88,9 @@ describe('useWaveConfig hydration', () => {
     mocks.projectData.forecastDate = '2026-08-04';
     mocks.readWaveStorage.mockReturnValue(defaultWaveStorage());
     mocks.ensureEcwamFrameReady.mockResolvedValue({ state: 'ready' });
+    mocks.fetchWavePackageMetadata.mockImplementation(({ model }) =>
+      Promise.resolve({ model, sourceCycle: '2026080400' })
+    );
     vi.clearAllMocks();
   });
 
@@ -143,11 +153,34 @@ describe('useWaveConfig hydration', () => {
     expect(mocks.addWaveLayer).toHaveBeenCalledWith(map, true, ['WW3']);
   });
 
-  it('steps WW3 within the current chart window without a readiness request', () => {
+  it('shows WW3 as waiting when aligned package metadata is unavailable', async () => {
+    mocks.fetchWavePackageMetadata.mockImplementation(({ model }) =>
+      model === 'WW3'
+        ? Promise.reject(new Error('WW3 package not ready'))
+        : Promise.resolve({ model, sourceCycle: '2026080400' })
+    );
+
+    const mapRef = { current: createReadyMap() };
+    const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    await waitFor(() => {
+      expect(result.current.waveConfig.ww3Frame.state).toBe('processing');
+    });
+
+    expect(result.current.waveConfig.ww3Frame.message).toBe(
+      'Waiting for aligned WW3 2026080400 package.'
+    );
+  });
+
+  it('steps WW3 within the current chart window without a readiness request', async () => {
     mocks.projectData.chartType = '24h forecast';
 
     const mapRef = { current: createReadyMap() };
     const { result } = renderHook(() => useWaveConfig({ mapRef, isDarkMode: false }));
+
+    await waitFor(() => {
+      expect(result.current.waveConfig.ww3Frame.state).toBe('ready');
+    });
 
     expect(result.current.waveConfig.ww3Frame).toMatchObject({
       state: 'ready',
