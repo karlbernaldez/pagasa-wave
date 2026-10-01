@@ -38,6 +38,15 @@ export const getPublicPublishedPdfStatus = asyncHandler(async (req, res) => {
   }
 
   const artifact = result.artifact;
+  if (!result.readiness?.ready) {
+    return res.status(202).json({
+      status: 'awaiting-snapshots',
+      message: 'Published chart snapshots are still being prepared.',
+      readyCount: result.readiness?.readyCount || 0,
+      requiredCount: result.readiness?.requiredCount || 0,
+    });
+  }
+
   if (!artifact) {
     return res.status(202).json({
       status: 'pending',
@@ -84,8 +93,19 @@ export const downloadPublicPublishedPdf = asyncHandler(async (req, res) => {
   const result = await getPublishedPdfArtifactForDate(dateKey, style);
   const artifact = result?.artifact;
 
-  if (!result || !artifact || artifact.status !== 'ready' || !artifact.filePath) {
-    if (result) queuePublishedPackagePdfGeneration(result.forecastPackage._id);
+  if (!result) {
+    return res.status(404).json({ message: 'Published forecast package not found.' });
+  }
+
+  if (!result.readiness?.ready) {
+    return res.status(409).json({
+      message: 'Published chart snapshots are still being prepared.',
+      status: 'awaiting-snapshots',
+    });
+  }
+
+  if (!artifact || artifact.status !== 'ready' || !artifact.filePath) {
+    queuePublishedPackagePdfGeneration(result.forecastPackage._id);
     return res.status(409).json({
       message: 'Published PDF is not ready yet.',
       status: artifact?.status || 'pending',
