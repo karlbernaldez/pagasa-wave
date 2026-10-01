@@ -12,6 +12,7 @@ import {
 import {
   approveForecastPackage,
   fetchAdminForecastPackages,
+  fetchPublishedArtifactReadiness,
   publishForecastPackage,
   startForecastPackageReview,
 } from '@/api/forecastPackageAPI';
@@ -21,6 +22,7 @@ import ForecastPackageCard from './ForecastPackageCard';
 import { PackageSummaryModal } from '@/features/forecasts/components/ForecastPackageCard';
 import useCurrentDashboardUser from '@/shared/hooks/useCurrentDashboardUser';
 import ProjectReviewModal from '@/features/projects/components/ProjectReviewModal';
+import PublishedArtifactCaptureJob from '@/features/projects/components/PublishedArtifactCaptureJob';
 import AdminDailyPackageFocus from '@/features/projects/components/project-library/AdminDailyPackageFocus';
 import ProjectPagination from '@/features/projects/components/project-library/ProjectPagination';
 import ProjectToolbar from '@/features/projects/components/project-library/ProjectToolbar';
@@ -101,8 +103,41 @@ function getEmptyStateCopy({ hasFilters }) {
 }
 
 function StateCard({ children, isDarkMode }) {
+  const publishedPackageForBackfill = useMemo(
+    () =>
+      packages.find(
+        (forecastPackage) =>
+          forecastPackage.status === 'Published' &&
+          getId(forecastPackage) &&
+          Array.isArray(forecastPackage.charts)
+      ) || null,
+    [packages]
+  );
+
+  useMemo(() => publishedPackageForBackfill, [publishedPackageForBackfill]);
+
   return (
-    <div
+    <>
+      {artifactCaptureJob && (
+        <PublishedArtifactCaptureJob
+          packageId={artifactCaptureJob.packageId}
+          charts={artifactCaptureJob.charts}
+          onProgress={setArtifactCaptureProgress}
+          onComplete={() => {
+            console.info('[PublishedPdf] Published chart snapshots completed');
+            setArtifactCaptureJob(null);
+            setArtifactCaptureProgress(null);
+            void query.refetch();
+          }}
+          onError={(message) => {
+            console.error('[PublishedPdf] Published snapshot capture failed:', message);
+            setFeedbackError(message);
+            setArtifactCaptureJob(null);
+            setArtifactCaptureProgress(null);
+          }}
+        />
+      )}
+      <div
       className={`rounded-2xl border p-10 text-center shadow-xl backdrop-blur-2xl ${
         isDarkMode
           ? 'border-white/10 bg-slate-950/48 text-slate-200 shadow-black/20'
@@ -111,6 +146,7 @@ function StateCard({ children, isDarkMode }) {
     >
       {children}
     </div>
+    </>
   );
 }
 
@@ -132,6 +168,8 @@ export default function AdminForecastPackageReviewPageV2() {
   const [publishingPackageId, setPublishingPackageId] = useState(null);
   const [approvingPackageId, setApprovingPackageId] = useState(null);
   const [feedbackError, setFeedbackError] = useState('');
+  const [artifactCaptureJob, setArtifactCaptureJob] = useState(null);
+  const [artifactCaptureProgress, setArtifactCaptureProgress] = useState(null);
 
   const query = useQuery({
     queryKey: ['admin-forecast-packages', page, statusFilter],
@@ -226,6 +264,11 @@ export default function AdminForecastPackageReviewPageV2() {
 
       await Promise.all(publishableCharts.map((project) => publishProject(getId(project))));
       await publishForecastPackage(packageId);
+      setArtifactCaptureJob({
+        packageId,
+        charts: forecastPackage.charts || [],
+      });
+      setArtifactCaptureProgress({ completed: 0, total: 12 });
       await query.refetch();
     } catch (error) {
       console.error('Failed to publish forecast package:', error);
