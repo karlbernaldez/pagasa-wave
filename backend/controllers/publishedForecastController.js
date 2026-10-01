@@ -1,3 +1,7 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import mongoose from 'mongoose';
 
 import asyncHandler from '../utils/asyncHandler.js';
@@ -8,6 +12,12 @@ import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 import { formatLocalDateKey } from '../utils/forecastPackage.js';
 import { canAccessProject } from '../utils/forecastPackageAccess.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const REPO_ROOT = path.resolve(__dirname, '../..');
+const WAVE_TILES_ROOT = path.resolve(
+  process.env.WAVELAB_WAVE_TILES_ROOT || path.join(REPO_ROOT, 'wavetiles', 'tiles')
+);
 const DEFAULT_RASTER_BOUNDS = [100, -5, 180, 50];
 const DEFAULT_MODEL_RUN_HOUR = 18;
 const DEFAULT_MODEL_RUN_DAY_OFFSET = -1;
@@ -30,6 +40,12 @@ const WW3_FORECAST_OFFSETS = Object.freeze({
   forecast_24h: { days: 0, hour: '18' },
   forecast_36h: { days: 1, hour: '06' },
   forecast_48h: { days: 1, hour: '18' },
+});
+const PUBLISHED_FORECAST_HOURS = Object.freeze({
+  analysis: 0,
+  forecast_24h: 24,
+  forecast_36h: 36,
+  forecast_48h: 48,
 });
 
 export function canArchivePublishedForecast(permissions = [], status) {
@@ -175,6 +191,57 @@ function shiftDateToken(dateToken, offsetDays) {
   return `${date.getUTCFullYear()}${padDatePart(date.getUTCMonth() + 1)}${padDatePart(date.getUTCDate())}`;
 }
 
+function isSourceCycle(value) {
+  return /^\d{10}$/.test(String(value || ''));
+}
+
+function addHoursToSourceCycle(sourceCycle, forecastHours) {
+  const match = String(sourceCycle || '').match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
+  if (!match) return '';
+
+  const [, year, month, day, hour] = match;
+  const date = new Date(
+    Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), 0, 0, 0)
+  );
+  date.setUTCHours(date.getUTCHours() + Number(forecastHours || 0));
+
+  return `${date.getUTCFullYear()}${padDatePart(date.getUTCMonth() + 1)}${padDatePart(
+    date.getUTCDate()
+  )}${padDatePart(date.getUTCHours())}`;
+}
+
+async function readPublishedSourceCycle(model, packageDate) {
+  const modelCode = String(model || '').trim().toUpperCase();
+  if (!modelCode || !packageDate) return '';
+
+  const metadataPath = path.join(
+    WAVE_TILES_ROOT,
+    modelCode,
+    'contours',
+    String(packageDate),
+    'package.json'
+  );
+
+  try {
+    const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
+    return isSourceCycle(metadata?.sourceCycle) ? String(metadata.sourceCycle) : '';
+  } catch {
+    return '';
+  }
+}
+
+export function resolvePublishedWaveRunDateTime({
+  chartType,
+  sourceCycle,
+  fallbackRunDateTime,
+}) {
+  const forecastHours = PUBLISHED_FORECAST_HOURS[normalizeChartType(chartType)];
+  if (isSourceCycle(sourceCycle) && Number.isFinite(forecastHours)) {
+    return addHoursToSourceCycle(sourceCycle, forecastHours);
+  }
+  return fallbackRunDateTime || '';
+}
+
 function interpolateTemplate(template, values) {
   if (!template) return '';
   return String(template).replace(/\{([a-zA-Z0-9_]+)\}/g, (match, key) => {
@@ -232,7 +299,7 @@ function getChartRunDefaults(chartType) {
   );
 }
 
-function resolveCogRaster(project, { theme = 'light' } = {}) {
+async function resolveCogRaster(project, { theme = 'light' } = {}) {
   const asset = getRawRasterAsset(project) || {};
   const forecastDate = formatForecastDateToken(project?.forecastDate);
   const packageDate = asset.packageDate || formatPackageDateToken(project?.forecastDate);
@@ -251,13 +318,25 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
         'PUBLIC_WAVE_MODEL_RUN_DAY_OFFSET',
         chartDefaults.days
       );
-  const runDate = isWw3Raster
+  const fallbackRunDate = isWw3Raster
     ? shiftDateToken(forecastDate, runDayOffset)
     : asset.runDate || shiftDateToken(forecastDate, runDayOffset);
-  const runHourToken = padDatePart(runHour);
+  const fallbackRunHourToken = padDatePart(runHour);
+  const fallbackRunDateTime = isWw3Raster
+    ? `${fallbackRunDate}${fallbackRunHourToken}`
+    : asset.runDateTime || `${fallbackRunDate}${fallbackRunHourToken}`;
+  const sourceCycle =
+    (isSourceCycle(asset.sourceCycle) && String(asset.sourceCycle)) ||
+    (await readPublishedSourceCycle(model, packageDate));
   const runDateTime = isWw3Raster
-    ? `${runDate}${runHourToken}`
-    : asset.runDateTime || `${runDate}${runHourToken}`;
+    ? resolvePublishedWaveRunDateTime({
+        chartType: project?.chartType,
+        sourceCycle,
+        fallbackRunDateTime,
+      })
+    : asset.runDateTime || fallbackRunDateTime;
+  const runDate = runDateTime.slice(0, 8) || fallbackRunDate;
+  const runHourToken = runDateTime.slice(8, 10) || fallbackRunHourToken;
   const tokenValues = {
     projectId: String(project?._id || ''),
     chartType: project?.chartType || '',
@@ -312,6 +391,7 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
     runHour: runHourToken,
     runDateTime,
     packageDate,
+    sourceCycle: sourceCycle || null,
   };
 }
 
@@ -326,7 +406,7 @@ async function buildPublishedForecastPayload(
   return {
     project: publicSafe ? getPublicProjectPayload(project) : getPublishedProjectPayload(project),
     featureCollection,
-    raster: resolveCogRaster(project, { theme }),
+    raster: await resolveCogRaster(project, { theme }),
     canArchive,
   };
 }
