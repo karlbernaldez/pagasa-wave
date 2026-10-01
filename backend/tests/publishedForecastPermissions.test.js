@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { canArchivePublishedForecast } from '../controllers/publishedForecastController.js';
+import {
+  canArchivePublishedForecast,
+  normalizePublicWaveTileUrl,
+} from '../controllers/publishedForecastController.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 test('projects.review grants archive capability for published forecasts regardless of role key', () => {
@@ -14,4 +17,41 @@ test('role name alone does not grant archive capability', () => {
 
 test('archive capability is false once the forecast is already archived', () => {
   assert.equal(canArchivePublishedForecast(['projects.review'], PROJECT_STATUS.ARCHIVED), false);
+});
+
+
+test('rewrites loopback WW3 tile URLs outside development', () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+
+  try {
+    const input = 'http://127.0.0.1:8081/WW3/dark/example.png';
+    assert.equal(normalizePublicWaveTileUrl(input), '/wavetiles/WW3/dark/example.png');
+  } finally {
+    process.env.NODE_ENV = previousNodeEnv;
+  }
+});
+
+test('preserves non-loopback tile URLs', () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'production';
+
+  try {
+    const input = 'https://tiles.example.com/WW3/light/example.png';
+    assert.equal(normalizePublicWaveTileUrl(input), input);
+  } finally {
+    process.env.NODE_ENV = previousNodeEnv;
+  }
+});
+
+test('preserves loopback URLs in explicit development mode', () => {
+  const previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'development';
+
+  try {
+    const input = 'http://127.0.0.1:8081/WW3/light/example.png';
+    assert.equal(normalizePublicWaveTileUrl(input), input);
+  } finally {
+    process.env.NODE_ENV = previousNodeEnv;
+  }
 });
