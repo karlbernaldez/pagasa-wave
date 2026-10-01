@@ -306,9 +306,16 @@ async function generatePackageArtifacts(packageId) {
           error: '',
         });
       } catch (error) {
+        const errorMessage = String(error?.message || error).slice(0, 1000);
+        console.error('[PublishedPdf] Style generation failed', {
+          packageId: String(forecastPackage._id),
+          style,
+          message: errorMessage,
+          stack: error?.stack,
+        });
         updateArtifact(forecastPackage, style, {
           status: 'failed',
-          error: String(error?.message || error).slice(0, 1000),
+          error: errorMessage,
           generatedAt: null,
         });
       }
