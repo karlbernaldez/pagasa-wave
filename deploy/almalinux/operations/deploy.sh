@@ -90,8 +90,8 @@ fi
 if ! grep -q "^PUBLIC_ORIGIN=" "$BACKEND_ENV"; then
   printf '\nPUBLIC_ORIGIN=%s\n' "$PUBLIC_ORIGIN" >> "$BACKEND_ENV"
 fi
-if ! grep -q "^PUBLISHED_PDF_DIR=" "$BACKEND_ENV"; then
-  printf 'PUBLISHED_PDF_DIR=%s\n' "$PUBLISHED_ARTIFACT_ROOT" >> "$BACKEND_ENV"
+if ! grep -q "^PUBLISHED_ARTIFACT_DIR=" "$BACKEND_ENV"; then
+  printf 'PUBLISHED_ARTIFACT_DIR=%s\n' "$PUBLISHED_ARTIFACT_ROOT" >> "$BACKEND_ENV"
 fi
 
 if grep -q "replace-with" "$BACKEND_ENV" || grep -q "mongodb+srv://USER:PASSWORD" "$BACKEND_ENV"; then
