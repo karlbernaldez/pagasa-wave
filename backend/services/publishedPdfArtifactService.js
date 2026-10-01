@@ -507,6 +507,9 @@ export async function getPublishedPackageArtifactReadiness(packageId) {
             ready: readiness.ready,
             readyCount: readiness.readyCount,
             requiredCount: readiness.requiredCount,
+            readyChartTypes: readiness.snapshots
+              .filter((snapshot) => snapshot.ready)
+              .map((snapshot) => snapshot.chartType),
             pdfStatus: artifact?.status || 'pending',
           },
         ];
