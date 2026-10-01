@@ -361,7 +361,7 @@ export default function PublishedForecastPage() {
     : `Preparing PDF and image exports using ${mapBoundsLabel}…`;
 
   useEffect(() => {
-    if (!project?._id) return undefined;
+    if (serverPdfCapture || !project?._id) return undefined;
 
     let cancelled = false;
 
@@ -388,7 +388,7 @@ export default function PublishedForecastPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [exportReadinessKey, project?._id]);
+  }, [exportReadinessKey, project?._id, serverPdfCapture]);
 
   const getExportMapDataUrl = () => {
     if (!isExportReady)
