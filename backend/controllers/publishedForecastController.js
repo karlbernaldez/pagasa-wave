@@ -183,6 +183,30 @@ function interpolateTemplate(template, values) {
   });
 }
 
+export function normalizePublicWaveTileUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  if (process.env.NODE_ENV === 'development') return raw;
+
+  try {
+    const parsed = new URL(raw);
+    const hostname = parsed.hostname.replace(/^\[|\]$/g, '');
+    const isLoopback =
+      hostname === 'localhost' ||
+      hostname === '::1' ||
+      hostname === '0.0.0.0' ||
+      hostname.startsWith('127.');
+
+    if (!isLoopback) return raw;
+
+    const pathname = parsed.pathname.startsWith('/') ? parsed.pathname : `/${parsed.pathname}`;
+    return `/wavetiles${pathname}`;
+  } catch {
+    return raw;
+  }
+}
+
 function getRawRasterAsset(project) {
   const publishedVersion = getPublishedVersion(project);
   return project?.publishedRaster || publishedVersion?.raster || project?.raster || null;
@@ -249,19 +273,20 @@ function resolveCogRaster(project, { theme = 'light' } = {}) {
   };
 
   const defaultTileTemplate =
-    process.env.NODE_ENV === 'production'
-      ? '/wavetiles/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png'
-      : 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
+    process.env.NODE_ENV === 'development'
+      ? 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png'
+      : '/wavetiles/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
   const cogUrl =
     asset.cogUrl ||
     asset.url ||
     interpolateTemplate(process.env.PUBLIC_WAVE_COG_URL_TEMPLATE, tokenValues);
-  const directTileUrl =
+  const directTileUrl = normalizePublicWaveTileUrl(
     asset.tileUrl ||
-    interpolateTemplate(
-      process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultTileTemplate,
-      tokenValues
-    );
+      interpolateTemplate(
+        process.env.PUBLIC_WAVE_COG_TILE_TEMPLATE || defaultTileTemplate,
+        tokenValues
+      )
+  );
   const cogTileTemplate =
     process.env.PUBLIC_COG_TILE_TEMPLATE || process.env.TITILER_COG_TILE_TEMPLATE || '';
   const tileUrl =
