@@ -1,7 +1,9 @@
 # WaveLab Published PDF Artifact Pipeline
 
-**Status:** Proposed implementation in progress  
-**Applies to:** Published Forecast Package chart-set PDF generation  
+**Status:** Proposed implementation in progress
+
+**Applies to:** Published Forecast Package chart-set PDF generation
+
 **Primary objective:** Generate stable, cacheable PDFs without rendering Mapbox/WebGL inside the backend process.
 
 ## Design summary
