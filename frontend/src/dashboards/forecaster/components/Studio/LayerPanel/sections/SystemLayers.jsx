@@ -292,6 +292,34 @@ const SystemLayersSection = ({
   }, [ecwamForecastHour, forecastDate]);
 
   const waveModelStatuses = React.useMemo(() => {
+    const statuses = {};
+    const selectedWw3State = showWW3Navigator ? waveConfig?.ww3Frame : null;
+
+    if (selectedWw3State) {
+      if (selectedWw3State.state === 'ready') {
+        statuses.WW3 = {
+          state: 'ready',
+          label: 'Ready',
+          detail: 'Visible in map stack',
+          selectable: true,
+        };
+      } else if (['checking', 'processing', 'building', 'available', 'busy'].includes(selectedWw3State.state)) {
+        statuses.WW3 = {
+          state: 'processing',
+          label: 'Processing',
+          detail: selectedWw3State.message || 'Checking forecast data',
+          selectable: false,
+        };
+      } else {
+        statuses.WW3 = {
+          state: 'unavailable',
+          label: 'No data',
+          detail: selectedWw3State.message || 'Forecast data is not available.',
+          selectable: false,
+        };
+      }
+    }
+
     const selectedEcwamState = showEcwamNavigator ? waveConfig?.ecwamFrame : null;
     const effectiveStatus =
       selectedEcwamState && selectedEcwamState.state !== 'idle'
@@ -299,38 +327,38 @@ const SystemLayersSection = ({
         : ecwamAvailability;
 
     if (effectiveStatus?.state === 'ready') {
-      return {
-        ECWAM: {
-          state: 'ready',
-          label: 'Ready',
-          detail: showEcwamNavigator ? 'Visible in map stack' : 'Available',
-          selectable: true,
-        },
+      statuses.ECWAM = {
+        state: 'ready',
+        label: 'Ready',
+        detail: showEcwamNavigator ? 'Visible in map stack' : 'Available',
+        selectable: true,
       };
-    }
-
-    if (
+    } else if (
       ['checking', 'building', 'available', 'busy', 'unavailable'].includes(effectiveStatus?.state)
     ) {
-      return {
-        ECWAM: {
-          state: 'processing',
-          label: 'Processing',
-          detail: effectiveStatus?.message || 'Checking forecast data',
-          selectable: false,
-        },
+      statuses.ECWAM = {
+        state: 'processing',
+        label: 'Processing',
+        detail: effectiveStatus?.message || 'Checking forecast data',
+        selectable: false,
       };
-    }
-
-    return {
-      ECWAM: {
+    } else {
+      statuses.ECWAM = {
         state: 'unavailable',
         label: 'No data',
         detail: effectiveStatus?.message || 'Forecast data is not available.',
         selectable: false,
-      },
-    };
-  }, [ecwamAvailability, showEcwamNavigator, waveConfig?.ecwamFrame]);
+      };
+    }
+
+    return statuses;
+  }, [
+    ecwamAvailability,
+    showEcwamNavigator,
+    showWW3Navigator,
+    waveConfig?.ecwamFrame,
+    waveConfig?.ww3Frame,
+  ]);
 
   const stepSingleModel = React.useCallback(
     (model, direction) => {
