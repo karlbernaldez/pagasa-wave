@@ -68,7 +68,9 @@ function getSafeUrlForLog(value) {
     const parsed = new URL(String(value || ''));
     return `${parsed.origin}${parsed.pathname}`;
   } catch {
-    return String(value || '').split('?')[0].split('#')[0];
+    return String(value || '')
+      .split('?')[0]
+      .split('#')[0];
   }
 }
 
