@@ -15,7 +15,7 @@ const PDF_STYLES = Object.freeze([
 ]);
 const PDF_STYLE_IDS = new Set(PDF_STYLES.map((style) => style.id));
 const generationPromises = new Map();
-const MAX_SNAPSHOT_BYTES = 4 * 1024 * 1024;
+const MAX_SNAPSHOT_BYTES = 3 * 1024 * 1024;
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function getArtifactRoot() {
@@ -154,7 +154,7 @@ function decodeSnapshotDataUrl(value) {
 
   const buffer = Buffer.from(match[1], 'base64');
   if (!buffer.length || buffer.length > MAX_SNAPSHOT_BYTES) {
-    throw new Error('Published chart snapshot exceeds the 4 MB size limit.');
+    throw new Error('Published chart snapshot exceeds the 3 MB size limit.');
   }
 
   if (!buffer.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) {
