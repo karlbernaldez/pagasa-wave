@@ -99,7 +99,41 @@ if grep -q "replace-with" "$BACKEND_ENV" || grep -q "mongodb+srv://USER:PASSWORD
   exit 2
 fi
 
-dnf install -y git curl nginx redis policycoreutils-python-utils
+dnf install -y \
+  git \
+  curl \
+  nginx \
+  redis \
+  policycoreutils-python-utils \
+  alsa-lib \
+  atk \
+  at-spi2-atk \
+  at-spi2-core \
+  cups-libs \
+  cairo \
+  gtk3 \
+  libXcomposite \
+  libXcursor \
+  libXdamage \
+  libXext \
+  libXfixes \
+  libXi \
+  libXrandr \
+  libXrender \
+  libXScrnSaver \
+  libXtst \
+  libxkbcommon \
+  libxcb \
+  mesa-libgbm \
+  nspr \
+  nss \
+  pango \
+  xorg-x11-fonts-100dpi \
+  xorg-x11-fonts-75dpi \
+  xorg-x11-fonts-cyrillic \
+  xorg-x11-fonts-misc \
+  xorg-x11-fonts-Type1 \
+  xorg-x11-utils
 systemctl enable --now redis nginx
 
 if command -v getenforce >/dev/null 2>&1 && [[ "$(getenforce)" != "Disabled" ]]; then
