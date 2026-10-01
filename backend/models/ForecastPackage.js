@@ -130,6 +130,29 @@ const ForecastPackageCompletionSchema = new Schema(
   { _id: false }
 );
 
+const ForecastPackagePdfArtifactSchema = new Schema(
+  {
+    style: {
+      type: String,
+      enum: ['wave-wind', 'wave-only', 'visually-impaired'],
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'generating', 'ready', 'failed'],
+      default: 'pending',
+    },
+    filePath: { type: String, default: '' },
+    fileName: { type: String, default: '' },
+    fileSize: { type: Number, default: 0 },
+    sha256: { type: String, default: '' },
+    generatedAt: { type: Date, default: null },
+    sourceRevision: { type: String, default: '' },
+    error: { type: String, default: '' },
+  },
+  { _id: false }
+);
+
 const ForecastPackageAuditLogSchema = new Schema(
   {
     action: {
@@ -218,6 +241,7 @@ const ForecastPackageSchema = new Schema(
     publishedAt: Date,
     archivedAt: Date,
     archivedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    publishedPdfArtifacts: { type: [ForecastPackagePdfArtifactSchema], default: [] },
     auditLogs: [ForecastPackageAuditLogSchema],
   },
   { timestamps: true }
