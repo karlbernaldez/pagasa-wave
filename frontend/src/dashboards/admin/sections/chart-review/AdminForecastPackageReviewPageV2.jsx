@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, FolderKanban } from 'lucide-react';
@@ -353,6 +353,30 @@ export default function AdminForecastPackageReviewPageV2() {
     }
   };
 
+  const handleArtifactCaptureProgress = useCallback((progress) => {
+    setArtifactCaptureProgress(progress);
+  }, []);
+
+  const handleArtifactCaptureComplete = useCallback(() => {
+    console.info('[PublishedPdf] Published chart snapshots completed');
+    setArtifactCaptureJob(null);
+    setArtifactCaptureProgress((current) => ({
+      ...(current || {}),
+      completed: current?.total || current?.completed || 0,
+      status: 'complete',
+    }));
+    void query.refetch();
+  }, [query]);
+
+  const handleArtifactCaptureError = useCallback((message) => {
+    console.error('[PublishedPdf] Published snapshot capture failed:', message);
+    setFeedbackError(message);
+    setArtifactCaptureProgress((current) => ({
+      ...(current || {}),
+      status: 'failed',
+    }));
+  }, []);
+
   const retryArtifactCapture = async () => {
     if (!artifactCaptureJob?.packageId) return;
 
@@ -407,25 +431,9 @@ export default function AdminForecastPackageReviewPageV2() {
           packageId={artifactCaptureJob.packageId}
           charts={artifactCaptureJob.charts}
           initialReadiness={artifactCaptureJob.initialReadiness}
-          onProgress={setArtifactCaptureProgress}
-          onComplete={() => {
-            console.info('[PublishedPdf] Published chart snapshots completed');
-            setArtifactCaptureJob(null);
-            setArtifactCaptureProgress((current) => ({
-              ...(current || {}),
-              completed: current?.total || current?.completed || 0,
-              status: 'complete',
-            }));
-            void query.refetch();
-          }}
-          onError={(message) => {
-            console.error('[PublishedPdf] Published snapshot capture failed:', message);
-            setFeedbackError(message);
-            setArtifactCaptureProgress((current) => ({
-              ...(current || {}),
-              status: 'failed',
-            }));
-          }}
+          onProgress={handleArtifactCaptureProgress}
+          onComplete={handleArtifactCaptureComplete}
+          onError={handleArtifactCaptureError}
         />
       )}
       <div className="min-h-full bg-transparent">
