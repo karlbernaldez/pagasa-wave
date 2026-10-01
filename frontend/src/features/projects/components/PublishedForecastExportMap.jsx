@@ -562,10 +562,12 @@ function fitExportBounds(map, bounds) {
 }
 
 const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap(
-  { projectId: providedProjectId, features, chartStyleMode, raster },
+  { projectId: providedProjectId, features, chartStyleMode, raster, isDarkModeOverride },
   ref
 ) {
-  const { isDarkMode } = useTheme();
+  const { isDarkMode: themeIsDarkMode } = useTheme();
+  const isDarkMode =
+    typeof isDarkModeOverride === 'boolean' ? isDarkModeOverride : themeIsDarkMode;
   const { bounds: mapBounds, settings: publicSettings } = usePublicMapBounds();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
