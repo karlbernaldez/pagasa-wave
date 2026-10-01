@@ -19,7 +19,6 @@ test('archive capability is false once the forecast is already archived', () => 
   assert.equal(canArchivePublishedForecast(['projects.review'], PROJECT_STATUS.ARCHIVED), false);
 });
 
-
 test('rewrites loopback WW3 tile URLs outside development', () => {
   const previousNodeEnv = process.env.NODE_ENV;
   process.env.NODE_ENV = 'production';
