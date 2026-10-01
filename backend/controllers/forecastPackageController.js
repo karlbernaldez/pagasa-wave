@@ -769,12 +769,14 @@ export const publishForecastPackage = asyncHandler(async (req, res) => {
     conflictMessage:
       'Forecast Package workflow changed while this operation was in progress. Reload and try again.',
   });
+  try {
+    await initializePublishedPackageArtifacts(forecastPackage._id);
+  } catch (error) {
+    console.error('[PublishedPdf] Failed to initialize published artifacts:', error);
+  }
+
   const populated = await populateForecastPackageById(forecastPackage._id);
   res.json(serializePackage(populated));
-
-  initializePublishedPackageArtifacts(forecastPackage._id).catch((error) => {
-    console.error('[PublishedPdf] Failed to initialize published artifacts:', error);
-  });
 });
 
 export const archiveForecastPackage = asyncHandler(async (req, res) => {
