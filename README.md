@@ -237,6 +237,7 @@ User-facing documentation is stored in `docs/`.
 Important documents include:
 
 - `docs/wavelab-user-manual.md` - WaveLab User Manual for Forecaster and Admin users
+- `docs/architecture/published-pdf-artifact-pipeline.md` - published chart snapshot and cached PDF artifact architecture
 - `docs/images/wavelab-user-manual/README.md` - screenshot checklist for the visual manual
 
 ## Development Notes
