@@ -33,6 +33,11 @@ const formatPackageDate = (forecastDate) => {
   return parsed.isValid() ? parsed.format('YYYY-MM-DD') : null;
 };
 
+const formatRequiredSourceCycle = (forecastDate) => {
+  const parsed = dayjs(forecastDate);
+  return parsed.isValid() ? `${parsed.format('YYYYMMDD')}00` : null;
+};
+
 export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const prevThemeRef = useRef(isDarkMode ? 'dark' : 'light');
   const ecwamRequestRef = useRef(0);
@@ -79,6 +84,28 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
   const ecwamSourceCycle = metadataMatchesPackage
     ? packageMetadata.ECWAM?.sourceCycle || null
     : null;
+  const ww3RequiredCycle = useMemo(() => formatRequiredSourceCycle(forecastDate), [forecastDate]);
+  const ww3FrameState = useMemo(() => {
+    if (!forecastDate || !metadataMatchesPackage) {
+      return {
+        state: 'checking',
+        message: ww3RequiredCycle
+          ? `Checking aligned WW3 ${ww3RequiredCycle} package.`
+          : 'Checking aligned WW3 package.',
+      };
+    }
+
+    if (!ww3SourceCycle) {
+      return {
+        state: 'processing',
+        message: ww3RequiredCycle
+          ? `Waiting for aligned WW3 ${ww3RequiredCycle} package.`
+          : 'Waiting for aligned WW3 package.',
+      };
+    }
+
+    return { state: 'ready', message: null };
+  }, [forecastDate, metadataMatchesPackage, ww3RequiredCycle, ww3SourceCycle]);
   const forecastPackage = useMemo(
     () => ({
       chartType,
@@ -413,8 +440,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
     () => ({
       ...waveConfig,
       ww3Frame: {
-        state: 'ready',
-        message: null,
+        ...ww3FrameState,
         forecastHour: ww3ForecastHour,
         availableHours: ww3ForecastHours,
         minHour: ww3ForecastHours[0],
@@ -436,6 +462,7 @@ export const useWaveConfig = ({ mapRef, isDarkMode }) => {
       waveConfig,
       ww3ForecastHour,
       ww3ForecastHours,
+      ww3FrameState,
       setWW3ForecastHour,
       stepWW3ForecastHour,
       ecwamForecastHour,
