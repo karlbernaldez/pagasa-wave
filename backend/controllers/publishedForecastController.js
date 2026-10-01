@@ -210,6 +210,37 @@ function addHoursToSourceCycle(sourceCycle, forecastHours) {
   )}${padDatePart(date.getUTCHours())}`;
 }
 
+function getRemoteWaveTilesBaseUrl() {
+  return String(process.env.WAVELAB_WAVE_TILES_REMOTE_BASE_URL || '')
+    .trim()
+    .replace(/\/$/, '');
+}
+
+async function readRemotePublishedSourceCycle(modelCode, packageDate) {
+  const remoteBaseUrl = getRemoteWaveTilesBaseUrl();
+  if (!remoteBaseUrl) return '';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
+
+  try {
+    const response = await fetch(
+      `${remoteBaseUrl}/${encodeURIComponent(modelCode)}/contours/${encodeURIComponent(
+        String(packageDate)
+      )}/package.json`,
+      { signal: controller.signal }
+    );
+    if (!response.ok) return '';
+
+    const metadata = await response.json();
+    return isSourceCycle(metadata?.sourceCycle) ? String(metadata.sourceCycle) : '';
+  } catch {
+    return '';
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function readPublishedSourceCycle(model, packageDate) {
   const modelCode = String(model || '').trim().toUpperCase();
   if (!modelCode || !packageDate) return '';
@@ -224,10 +255,12 @@ async function readPublishedSourceCycle(model, packageDate) {
 
   try {
     const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
-    return isSourceCycle(metadata?.sourceCycle) ? String(metadata.sourceCycle) : '';
+    if (isSourceCycle(metadata?.sourceCycle)) return String(metadata.sourceCycle);
   } catch {
-    return '';
+    // Local WaveTiles are optional in development; fall through to the configured server.
   }
+
+  return readRemotePublishedSourceCycle(modelCode, packageDate);
 }
 
 export function resolvePublishedWaveRunDateTime({
@@ -351,8 +384,10 @@ async function resolveCogRaster(project, { theme = 'light' } = {}) {
     cycle: runHourToken,
   };
 
+  const useRemoteDevelopmentTiles =
+    process.env.NODE_ENV === 'development' && Boolean(getRemoteWaveTilesBaseUrl());
   const defaultTileTemplate =
-    process.env.NODE_ENV === 'development'
+    process.env.NODE_ENV === 'development' && !useRemoteDevelopmentTiles
       ? 'http://127.0.0.1:8081/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png'
       : '/wavetiles/{model}/{theme}/{packageDate}/{runDateTime}/{z}/{x}/{y}.png';
   const cogUrl =
