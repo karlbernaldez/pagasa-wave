@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer';
 import ForecastPackage from '../models/ForecastPackage.js';
 import { FORECAST_PACKAGE_STATUS, REQUIRED_FORECAST_CHARTS } from '../utils/forecastPackage.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
+import { decodePublishedSnapshotDataUrl } from '../utils/publishedArtifactPayload.js';
 
 const PDF_STYLES = Object.freeze([
   { id: 'wave-wind', label: 'Wave & Wind' },
@@ -15,8 +16,6 @@ const PDF_STYLES = Object.freeze([
 ]);
 const PDF_STYLE_IDS = new Set(PDF_STYLES.map((style) => style.id));
 const generationPromises = new Map();
-const MAX_SNAPSHOT_BYTES = 3 * 1024 * 1024;
-const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function getArtifactRoot() {
   const configured = String(process.env.PUBLISHED_ARTIFACT_DIR || '').trim();
@@ -144,24 +143,6 @@ function getSnapshotReadiness(forecastPackage, style) {
     snapshots,
     sourceRevision,
   };
-}
-
-function decodeSnapshotDataUrl(value) {
-  const match = /^data:image\/png;base64,([A-Za-z0-9+/=\r\n]+)$/.exec(String(value || ''));
-  if (!match) {
-    throw new Error('Published chart snapshot must be a PNG data URL.');
-  }
-
-  const buffer = Buffer.from(match[1], 'base64');
-  if (!buffer.length || buffer.length > MAX_SNAPSHOT_BYTES) {
-    throw new Error('Published chart snapshot exceeds the 3 MB size limit.');
-  }
-
-  if (!buffer.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)) {
-    throw new Error('Published chart snapshot is not a valid PNG image.');
-  }
-
-  return buffer;
 }
 
 function getPackageDirectory(forecastPackage) {
@@ -413,7 +394,7 @@ export async function savePublishedChartSnapshot({
     throw new Error('Snapshot project must be published.');
   }
 
-  const image = decodeSnapshotDataUrl(imageDataUrl);
+  const image = decodePublishedSnapshotDataUrl(imageDataUrl);
   const sourceRevision = getSourceRevision(forecastPackage);
   const filePath = getSnapshotPath(forecastPackage, style, chartType);
   await writeAtomic(filePath, image);
