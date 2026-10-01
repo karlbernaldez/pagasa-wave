@@ -23,7 +23,23 @@ import {
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
-const STYLE_URL = 'mapbox://styles/votewave/cmie07p43007j01svdwmmg89n';
+const EXPORT_BACKGROUND_LAYER_ID = 'published-export-background';
+
+function createExportStyle(isDarkMode) {
+  return {
+    version: 8,
+    sources: {},
+    layers: [
+      {
+        id: EXPORT_BACKGROUND_LAYER_ID,
+        type: 'background',
+        paint: {
+          'background-color': isDarkMode ? '#0f172a' : '#e2e8f0',
+        },
+      },
+    ],
+  };
+}
 const EXPORT_WIDTH = 1400;
 const EXPORT_HEIGHT = 700;
 const RASTER_SOURCE_ID = 'published-export-raster-source';
@@ -546,7 +562,7 @@ function fitExportBounds(map, bounds) {
 }
 
 const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMap(
-  { features, chartStyleMode, raster },
+  { projectId: providedProjectId, features, chartStyleMode, raster },
   ref
 ) {
   const { isDarkMode } = useTheme();
@@ -574,7 +590,10 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
   const resolvedRaster = raster || fetchedRaster;
   const hasRenderableContent =
     hasFeatures || hasBoundary || Boolean(shouldRenderRaster && resolvedRaster?.tileUrl);
-  const projectId = useMemo(() => getProjectIdFromLocation(), []);
+  const projectId = useMemo(
+    () => providedProjectId || getProjectIdFromLocation(),
+    [providedProjectId]
+  );
   const theme = isDarkMode ? 'dark' : 'light';
   const mapBoundsSignature = useMemo(() => JSON.stringify(mapBounds), [mapBounds]);
   const boundarySignature = useMemo(
@@ -636,6 +655,13 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     const map = mapRef.current;
     if (!map || !isMapStyleReady(map)) return false;
 
+    if (map.getLayer(EXPORT_BACKGROUND_LAYER_ID)) {
+      map.setPaintProperty(
+        EXPORT_BACKGROUND_LAYER_ID,
+        'background-color',
+        isDarkMode ? '#0f172a' : '#e2e8f0'
+      );
+    }
     syncRaster(map, resolvedRaster, shouldRenderRaster);
     syncCountryOverlay(map, isDarkMode);
     syncPublishedDomainBoundary(map, publicSettings, 'published-export-domain-boundary');
@@ -688,7 +714,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: STYLE_URL,
+      style: createExportStyle(isDarkMode),
       projection: 'mercator',
       center: getMapBoundsCenter(mapBounds),
       zoom: 4.8,
