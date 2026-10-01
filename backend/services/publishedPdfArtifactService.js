@@ -16,6 +16,7 @@ const PDF_STYLES = Object.freeze([
 ]);
 const PDF_STYLE_IDS = new Set(PDF_STYLES.map((style) => style.id));
 const generationPromises = new Map();
+const generationRerunRequests = new Set();
 
 function getArtifactRoot() {
   const configured = String(process.env.PUBLISHED_ARTIFACT_DIR || '').trim();
@@ -427,13 +428,23 @@ export async function savePublishedChartSnapshot({
 export function queuePublishedPackagePdfGeneration(packageId) {
   const key = String(packageId || '');
   if (!key) return null;
-  if (generationPromises.has(key)) return generationPromises.get(key);
+
+  if (generationPromises.has(key)) {
+    generationRerunRequests.add(key);
+    return generationPromises.get(key);
+  }
 
   const promise = generatePackageArtifacts(key)
     .catch((error) => {
       console.error('[PublishedPdf] Package composition failed:', error);
     })
-    .finally(() => generationPromises.delete(key));
+    .finally(() => {
+      generationPromises.delete(key);
+
+      if (generationRerunRequests.delete(key)) {
+        queuePublishedPackagePdfGeneration(key);
+      }
+    });
 
   generationPromises.set(key, promise);
   return promise;
