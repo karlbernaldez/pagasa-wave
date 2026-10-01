@@ -130,7 +130,7 @@ jobs:
 
       - name: Deploy validated commit
         env:
-          PUBLIC_HOST: ${{ vars.PUBLIC_HOST }}
+          PUBLIC_HOST: ${{ vars.PUBLIC_HOST || '145.79.28.13' }}
         run: |
           test -n "$PUBLIC_HOST"
           sudo -n /usr/local/sbin/wavelab-deploy "$GITHUB_SHA" "$PUBLIC_HOST"
