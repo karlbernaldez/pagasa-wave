@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   canArchivePublishedForecast,
   normalizePublicWaveTileUrl,
+  resolvePublishedWaveRunDateTime,
 } from '../controllers/publishedForecastController.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
@@ -53,4 +54,53 @@ test('preserves loopback URLs in explicit development mode', () => {
   } finally {
     process.env.NODE_ENV = previousNodeEnv;
   }
+});
+
+
+test('resolves published WW3 chart frames from the package source cycle', () => {
+  const sourceCycle = '2026093000';
+
+  assert.equal(
+    resolvePublishedWaveRunDateTime({
+      chartType: 'analysis',
+      sourceCycle,
+      fallbackRunDateTime: '2026092918',
+    }),
+    '2026093000'
+  );
+  assert.equal(
+    resolvePublishedWaveRunDateTime({
+      chartType: 'forecast_24h',
+      sourceCycle,
+      fallbackRunDateTime: '2026093018',
+    }),
+    '2026100100'
+  );
+  assert.equal(
+    resolvePublishedWaveRunDateTime({
+      chartType: 'forecast_36h',
+      sourceCycle,
+      fallbackRunDateTime: '2026100106',
+    }),
+    '2026100112'
+  );
+  assert.equal(
+    resolvePublishedWaveRunDateTime({
+      chartType: 'forecast_48h',
+      sourceCycle,
+      fallbackRunDateTime: '2026100118',
+    }),
+    '2026100200'
+  );
+});
+
+test('falls back to legacy published run resolution when source cycle is unavailable', () => {
+  assert.equal(
+    resolvePublishedWaveRunDateTime({
+      chartType: 'forecast_24h',
+      sourceCycle: '',
+      fallbackRunDateTime: '2026093018',
+    }),
+    '2026093018'
+  );
 });
