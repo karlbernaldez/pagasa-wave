@@ -175,7 +175,7 @@ function buildPdfHtml({ forecastPackage, styleLabel, charts }) {
 
 async function capturePublishedChart(page, origin, projectId, style) {
   await page.evaluateOnNewDocument((styleMode) => {
-    window.localStorage.setItem('wavelab.chartStyleMode', styleMode);
+    globalThis.localStorage.setItem('wavelab.chartStyleMode', styleMode);
   }, style);
 
   await page.goto(`${origin}/charts/${encodeURIComponent(projectId)}?serverPdf=1`, {
