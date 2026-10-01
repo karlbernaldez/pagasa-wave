@@ -28,6 +28,13 @@ import { useProjectData } from '../../Menu/hooks/useProjectData';
 
 const cn = (...classes) => classes.filter(Boolean).join(' ');
 const WAVE_SYNC_STORAGE_KEY = 'WAVE_SYNC_FORECAST_HOURS';
+const WAVE_PROCESSING_STATES = new Set([
+  'checking',
+  'processing',
+  'building',
+  'available',
+  'busy',
+]);
 
 const SectionLabel = ({ label, count, isDarkMode, accent = false }) => (
   <div className="flex items-center justify-between px-1">
@@ -303,11 +310,7 @@ const SystemLayersSection = ({
           detail: 'Visible in map stack',
           selectable: true,
         };
-      } else if (
-        ['checking', 'processing', 'building', 'available', 'busy'].includes(
-          selectedWw3State.state
-        )
-      ) {
+      } else if (WAVE_PROCESSING_STATES.has(selectedWw3State.state)) {
         statuses.WW3 = {
           state: 'processing',
           label: 'Processing',
