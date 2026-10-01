@@ -303,7 +303,11 @@ const SystemLayersSection = ({
           detail: 'Visible in map stack',
           selectable: true,
         };
-      } else if (['checking', 'processing', 'building', 'available', 'busy'].includes(selectedWw3State.state)) {
+      } else if (
+        ['checking', 'processing', 'building', 'available', 'busy'].includes(
+          selectedWw3State.state
+        )
+      ) {
         statuses.WW3 = {
           state: 'processing',
           label: 'Processing',
