@@ -5,7 +5,10 @@ import path from 'node:path';
 import puppeteer from 'puppeteer';
 
 import ForecastPackage from '../models/ForecastPackage.js';
-import { FORECAST_PACKAGE_STATUS, REQUIRED_FORECAST_CHARTS } from '../utils/forecastPackage.js';
+import {
+  FORECAST_PACKAGE_STATUS,
+  REQUIRED_FORECAST_CHARTS,
+} from '../utils/forecastPackage.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
 
 const PDF_STYLES = Object.freeze([
@@ -71,7 +74,9 @@ function getSourceRevision(forecastPackage) {
 
   return [
     forecastPackage._id,
-    forecastPackage.publishedAt?.toISOString?.() || forecastPackage.updatedAt?.toISOString?.() || '',
+    forecastPackage.publishedAt?.toISOString?.() ||
+      forecastPackage.updatedAt?.toISOString?.() ||
+      '',
     ...chartRevisions,
   ].join('|');
 }
@@ -118,7 +123,9 @@ function buildPdfHtml({ forecastPackage, styleLabel, charts }) {
             <img src="${imageDataUrl}" alt="${escapeHtml(slot.label)}" />
           </div>
           <footer>
-            <span>Published ${escapeHtml(formatManilaDateKey(project?.publishedAt || forecastPackage.publishedAt))}</span>
+            <span>Published ${escapeHtml(
+              formatManilaDateKey(project?.publishedAt || forecastPackage.publishedAt)
+            )}</span>
             <span>DOST-PAGASA WaveLab</span>
           </footer>
         </article>
@@ -211,7 +218,12 @@ async function generateStyleArtifact(browser, forecastPackage, style) {
     const page = await browser.newPage();
     try {
       await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: 1 });
-      const imageDataUrl = await capturePublishedChart(page, origin, String(project._id), style);
+      const imageDataUrl = await capturePublishedChart(
+        page,
+        origin,
+        String(project._id),
+        style
+      );
       charts.push({
         slot: { ...slot, badge: slot.label.replace(' Wave Forecast', '').toUpperCase() },
         project,
@@ -282,7 +294,9 @@ async function generatePackageArtifacts(packageId) {
 
       try {
         const pdfBuffer = await generateStyleArtifact(browser, forecastPackage, style);
-        const fileName = `wave-chart-set-${formatManilaDateKey(forecastPackage.forecastDate)}-${style}.pdf`;
+        const fileName = `wave-chart-set-${formatManilaDateKey(
+          forecastPackage.forecastDate
+        )}-${style}.pdf`;
         const finalPath = path.join(packageDir, fileName);
         const temporaryPath = `${finalPath}.tmp-${process.pid}-${Date.now()}`;
 
@@ -346,7 +360,9 @@ export async function getPublishedPdfArtifactForDate(dateKey, style) {
 
   if (!forecastPackage) return null;
 
-  const artifact = (forecastPackage.publishedPdfArtifacts || []).find((item) => item.style === style);
+  const artifact = (forecastPackage.publishedPdfArtifacts || []).find(
+    (item) => item.style === style
+  );
   return { forecastPackage, artifact: artifact || null };
 }
 
