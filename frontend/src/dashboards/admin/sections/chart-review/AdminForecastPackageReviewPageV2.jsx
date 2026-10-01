@@ -366,7 +366,7 @@ export default function AdminForecastPackageReviewPageV2() {
       status: 'complete',
     }));
     void query.refetch();
-  }, [query]);
+  }, [query.refetch]);
 
   const handleArtifactCaptureError = useCallback((message) => {
     console.error('[PublishedPdf] Published snapshot capture failed:', message);
