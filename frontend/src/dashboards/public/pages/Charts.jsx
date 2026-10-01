@@ -16,6 +16,8 @@ import Button from '@/components/ui/Button';
 import {
   fetchPublicPublishedChartOutput,
   fetchPublicPublishedCharts,
+  fetchPublicPublishedPdfStatus,
+  getPublicPublishedPdfDownloadUrl,
 } from '@/api/publishedForecastAPI';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { useChartType } from '@/app/providers/ChartTypeProvider';
@@ -475,6 +477,11 @@ export default function Charts() {
   const [selectedDate, setSelectedDate] = useState('');
   const [exportState, setExportState] = useState({ requestKey: '', error: '', entries: [] });
   const [pdfReadiness, setPdfReadiness] = useState({ key: '', count: 0 });
+  const [serverPdfState, setServerPdfState] = useState({
+    key: '',
+    status: 'checking',
+    error: '',
+  });
   const showStaffInfo = publicSettings.showPublicStaffInfo !== false;
   const chartRequestKey = `${query}\u0000${isDark ? 'dark' : 'light'}\u0000${reloadToken}`;
   const chartListLoading = state.requestKey !== chartRequestKey;
@@ -536,7 +543,7 @@ export default function Charts() {
     (slot) => chartByType.get(slot.chartType)?._id || ''
   ).join('|');
   const exportRequestKey = `${activeDate}\u0000${isDark ? 'dark' : 'light'}\u0000${chartExportSignature}`;
-  const hasExportRequest = Boolean(activeDate && recentProjects.length);
+  const hasExportRequest = false;
   const exportRequestCurrent = exportState.requestKey === exportRequestKey;
   const exportEntries = useMemo(
     () => (exportRequestCurrent ? exportState.entries : []),
@@ -548,18 +555,24 @@ export default function Charts() {
   const pdfReadyCount = pdfReadiness.key === pdfReadinessKey ? pdfReadiness.count : 0;
   const pdfTotalCount = exportEntries.length;
   const isPdfReady = Boolean(!exportLoading && pdfTotalCount && pdfReadyCount >= pdfTotalCount);
-  const pdfButtonLabel = exportLoading
-    ? 'Preparing PDF'
-    : isPdfReady
-      ? 'Download PDF'
+  const serverPdfKey = `${activeDate}\u0000${activeStyleMode}`;
+  const serverPdfCurrent = serverPdfState.key === serverPdfKey;
+  const serverPdfStatus = serverPdfCurrent ? serverPdfState.status : 'checking';
+  const serverPdfReady = serverPdfStatus === 'ready';
+  const pdfButtonLabel = serverPdfReady
+    ? 'Download PDF'
+    : serverPdfStatus === 'failed'
+      ? 'PDF unavailable'
       : 'Preparing PDF';
   const forecastPeriodLabel = activeDate
     ? `${formatDate(activeDate, { month: 'short', day: 'numeric' })} - ${formatDate(new Date(new Date(activeDate).getTime() + 24 * 60 * 60 * 1000), { month: 'short', day: 'numeric', year: 'numeric' })}`
     : 'Latest available period';
   const pdfStatusText = availableCount
-    ? isPdfReady
-      ? `PDF export is ready. ${availableCount} of 4 published charts will be included; empty slots are marked unavailable.`
-      : `Preparing ${Math.min(pdfReadyCount, pdfTotalCount || 4)} of ${pdfTotalCount || 4} chart slots for PDF export. Empty slots will be marked unavailable.`
+    ? serverPdfReady
+      ? 'Server-generated PDF is ready for download.'
+      : serverPdfStatus === 'failed'
+        ? 'Server-generated PDF is temporarily unavailable.'
+        : 'WaveLab is preparing the server-generated PDF for this published chart set.'
     : 'PDF export becomes available after at least one chart is published for this date.';
 
   const openChart = useCallback(
@@ -568,6 +581,53 @@ export default function Charts() {
     },
     [navigate]
   );
+
+  useEffect(() => {
+    if (!activeDate || !availableCount) return undefined;
+
+    const controller = new AbortController();
+    let timer = 0;
+    let cancelled = false;
+    const key = serverPdfKey;
+
+    const checkStatus = async () => {
+      try {
+        const data = await fetchPublicPublishedPdfStatus({
+          date: activeDate,
+          style: activeStyleMode,
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+
+        setServerPdfState({
+          key,
+          status: data?.status || 'pending',
+          error: '',
+        });
+
+        if (data?.status !== 'ready') {
+          timer = window.setTimeout(checkStatus, 3000);
+        }
+      } catch (error) {
+        if (cancelled || error?.name === 'AbortError') return;
+        setServerPdfState({
+          key,
+          status: 'failed',
+          error: error?.message || 'Published PDF status could not be loaded.',
+        });
+      }
+    };
+
+    setServerPdfState({ key, status: 'checking', error: '' });
+    void checkStatus();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [activeDate, activeStyleMode, availableCount, serverPdfKey]);
+
 
   useEffect(() => {
     const controller = new AbortController();
@@ -645,6 +705,24 @@ export default function Charts() {
   }, [activeStyleMode, exportEntries, pdfReadinessKey]);
 
   const handleDownloadChartSetPdf = async () => {
+    if (serverPdfState.status) {
+      if (!serverPdfReady) {
+        setServerPdfState((current) => ({
+          ...current,
+          error: 'The server-generated PDF is still being prepared.',
+        }));
+        return;
+      }
+
+      window.location.assign(
+        getPublicPublishedPdfDownloadUrl({
+          date: activeDate,
+          style: activeStyleMode,
+        })
+      );
+      return;
+    }
+
     if (!isPdfReady) {
       setExportState((prev) => ({
         ...prev,
@@ -778,8 +856,8 @@ export default function Charts() {
           <Button
             size="lg"
             icon={Download}
-            loading={exportLoading || (!isPdfReady && !!availableCount)}
-            disabled={!availableCount || exportLoading || !isPdfReady}
+            loading={!serverPdfReady && !!availableCount && serverPdfStatus !== 'failed'}
+            disabled={!availableCount || !serverPdfReady}
             onClick={handleDownloadChartSetPdf}
           >
             {pdfButtonLabel}
@@ -831,9 +909,9 @@ export default function Charts() {
           </StateNotice>
         )}
 
-        {exportError && (
+        {(exportError || serverPdfState.error) && (
           <StateNotice isDark={isDark} tone="amber" title="PDF export not ready">
-            {exportError}
+            {serverPdfState.error || exportError}
           </StateNotice>
         )}
 
@@ -883,8 +961,8 @@ export default function Charts() {
                     size="sm"
                     variant="secondary"
                     icon={Download}
-                    loading={exportLoading || (!isPdfReady && !!availableCount)}
-                    disabled={!availableCount || exportLoading || !isPdfReady}
+                    loading={!serverPdfReady && !!availableCount && serverPdfStatus !== 'failed'}
+                    disabled={!availableCount || !serverPdfReady}
                     onClick={handleDownloadChartSetPdf}
                   >
                     {pdfButtonLabel}
