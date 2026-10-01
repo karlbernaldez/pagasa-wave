@@ -108,7 +108,9 @@ dnf install -y \
   alsa-lib \
   atk \
   at-spi2-atk \
+  at-spi2-core \
   cups-libs \
+  cairo \
   gtk3 \
   libXcomposite \
   libXcursor \
@@ -120,6 +122,7 @@ dnf install -y \
   libXrender \
   libXScrnSaver \
   libXtst \
+  libxkbcommon \
   libxcb \
   mesa-libgbm \
   nspr \
