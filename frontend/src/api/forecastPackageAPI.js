@@ -75,6 +75,18 @@ export const approveForecastPackage = (id) =>
 export const publishForecastPackage = (id) =>
   request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/publish`, { method: 'PATCH' });
 
+export const fetchPublishedArtifactReadiness = (id, { signal } = {}) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/published-artifacts/readiness`, { signal });
+
+export const uploadPublishedChartSnapshot = (
+  id,
+  { style, chartType, projectId, imageDataUrl }
+) =>
+  request(`${FORECAST_PACKAGE_API_BASE_URL}/${id}/published-artifacts/snapshots`, {
+    method: 'POST',
+    body: JSON.stringify({ style, chartType, projectId, imageDataUrl }),
+  });
+
 export const fetchForecastPackageChartContextByProject = (
   projectId,
   { signal, autoJoin = true } = {}

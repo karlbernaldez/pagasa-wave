@@ -7,6 +7,7 @@ import puppeteer from 'puppeteer';
 import ForecastPackage from '../models/ForecastPackage.js';
 import { FORECAST_PACKAGE_STATUS, REQUIRED_FORECAST_CHARTS } from '../utils/forecastPackage.js';
 import { PROJECT_STATUS } from '../utils/projectWorkflow.js';
+import { decodePublishedSnapshotDataUrl } from '../utils/publishedArtifactPayload.js';
 
 const PDF_STYLES = Object.freeze([
   { id: 'wave-wind', label: 'Wave & Wind' },
@@ -15,31 +16,22 @@ const PDF_STYLES = Object.freeze([
 ]);
 const PDF_STYLE_IDS = new Set(PDF_STYLES.map((style) => style.id));
 const generationPromises = new Map();
-
-function getPublicOrigin() {
-  const configured = String(process.env.PUBLIC_ORIGIN || '').trim();
-  if (configured) return configured.replace(/\/+$/, '');
-
-  const corsOrigin = String(process.env.CORS_ALLOWED_ORIGINS || '')
-    .split(',')
-    .map((value) => value.trim())
-    .find(Boolean);
-
-  if (corsOrigin) return corsOrigin.replace(/\/+$/, '');
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('PUBLIC_ORIGIN is required for published PDF generation.');
-  }
-  return 'http://127.0.0.1:5173';
-}
+const generationRerunRequests = new Set();
 
 function getArtifactRoot() {
-  if (process.env.PUBLISHED_PDF_DIR) {
-    return path.resolve(process.env.PUBLISHED_PDF_DIR);
+  const configured = String(process.env.PUBLISHED_ARTIFACT_DIR || '').trim();
+  if (configured) return path.resolve(configured);
+
+  const legacyPdfRoot = String(process.env.PUBLISHED_PDF_DIR || '').trim();
+  if (legacyPdfRoot) {
+    return path.join(path.dirname(path.resolve(legacyPdfRoot)), 'published-artifacts');
   }
+
   if (process.env.NODE_ENV === 'production') {
-    return '/var/lib/wavelab/published-pdfs';
+    return '/var/lib/wavelab/published-artifacts';
   }
-  return path.resolve('tmp', 'published-pdfs');
+
+  return path.resolve('tmp', 'published-artifacts');
 }
 
 function formatManilaDateKey(value) {
@@ -63,44 +55,6 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-function getSafeUrlForLog(value) {
-  try {
-    const parsed = new URL(String(value || ''));
-    return `${parsed.origin}${parsed.pathname}`;
-  } catch {
-    return String(value || '')
-      .split('?')[0]
-      .split('#')[0];
-  }
-}
-
-function attachPageDiagnostics(page, context) {
-  page.on('pageerror', (error) => {
-    console.error('[PublishedPdf] Browser page error', {
-      ...context,
-      message: error?.message || String(error),
-    });
-  });
-
-  page.on('requestfailed', (request) => {
-    console.error('[PublishedPdf] Browser request failed', {
-      ...context,
-      url: getSafeUrlForLog(request.url()),
-      method: request.method(),
-      failure: request.failure()?.errorText || 'unknown',
-    });
-  });
-
-  page.on('response', (response) => {
-    if (response.status() < 400) return;
-    console.error('[PublishedPdf] Browser HTTP error', {
-      ...context,
-      status: response.status(),
-      url: getSafeUrlForLog(response.url()),
-    });
-  });
-}
-
 function getSourceRevision(forecastPackage) {
   const chartRevisions = (forecastPackage.charts || []).map((chart) => {
     const project = chart.project;
@@ -116,17 +70,17 @@ function getSourceRevision(forecastPackage) {
   ].join('|');
 }
 
-function getArtifactRow(forecastPackage, style) {
+function getPdfArtifactRow(forecastPackage, style) {
   return forecastPackage.publishedPdfArtifacts?.find((artifact) => artifact.style === style);
 }
 
-function ensureArtifactRows(forecastPackage) {
+function ensurePdfArtifactRows(forecastPackage) {
   if (!Array.isArray(forecastPackage.publishedPdfArtifacts)) {
     forecastPackage.publishedPdfArtifacts = [];
   }
 
   PDF_STYLES.forEach(({ id }) => {
-    if (!getArtifactRow(forecastPackage, id)) {
+    if (!getPdfArtifactRow(forecastPackage, id)) {
       forecastPackage.publishedPdfArtifacts.push({
         style: id,
         status: 'pending',
@@ -135,10 +89,85 @@ function ensureArtifactRows(forecastPackage) {
   });
 }
 
-function updateArtifact(forecastPackage, style, values) {
-  ensureArtifactRows(forecastPackage);
-  const artifact = getArtifactRow(forecastPackage, style);
-  Object.assign(artifact, values);
+function updatePdfArtifact(forecastPackage, style, values) {
+  ensurePdfArtifactRows(forecastPackage);
+  Object.assign(getPdfArtifactRow(forecastPackage, style), values);
+}
+
+function getSnapshotRow(forecastPackage, style, chartType) {
+  return forecastPackage.publishedChartSnapshots?.find(
+    (snapshot) => snapshot.style === style && snapshot.chartType === chartType
+  );
+}
+
+function upsertSnapshotRow(forecastPackage, style, chartType, values) {
+  if (!Array.isArray(forecastPackage.publishedChartSnapshots)) {
+    forecastPackage.publishedChartSnapshots = [];
+  }
+
+  const existing = getSnapshotRow(forecastPackage, style, chartType);
+  if (existing) {
+    Object.assign(existing, values);
+    return existing;
+  }
+
+  forecastPackage.publishedChartSnapshots.push({ style, chartType, ...values });
+  return getSnapshotRow(forecastPackage, style, chartType);
+}
+
+function getSnapshotReadiness(forecastPackage, style) {
+  const sourceRevision = getSourceRevision(forecastPackage);
+  const snapshots = REQUIRED_FORECAST_CHARTS.map((slot) => {
+    const chart = (forecastPackage.charts || []).find((item) => item.chartType === slot.chartType);
+    const projectId = String(chart?.project?._id || chart?.project || '');
+    const snapshot = getSnapshotRow(forecastPackage, style, slot.chartType);
+    const ready = Boolean(
+      snapshot?.filePath &&
+        snapshot?.sha256 &&
+        snapshot?.sourceRevision === sourceRevision &&
+        String(snapshot?.project || '') === projectId
+    );
+
+    return {
+      chartType: slot.chartType,
+      label: slot.label,
+      projectId,
+      snapshot,
+      ready,
+    };
+  });
+
+  return {
+    ready: snapshots.every((item) => item.ready),
+    readyCount: snapshots.filter((item) => item.ready).length,
+    requiredCount: snapshots.length,
+    snapshots,
+    sourceRevision,
+  };
+}
+
+function getPackageDirectory(forecastPackage) {
+  return path.join(getArtifactRoot(), String(forecastPackage._id));
+}
+
+function getSnapshotPath(forecastPackage, style, chartType) {
+  return path.join(getPackageDirectory(forecastPackage), 'snapshots', style, `${chartType}.png`);
+}
+
+function getPdfPath(forecastPackage, style) {
+  const dateKey = formatManilaDateKey(forecastPackage.forecastDate);
+  return path.join(
+    getPackageDirectory(forecastPackage),
+    'pdf',
+    `wave-chart-set-${dateKey}-${style}.pdf`
+  );
+}
+
+async function writeAtomic(filePath, buffer) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  const temporaryPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  await fs.writeFile(temporaryPath, buffer);
+  await fs.rename(temporaryPath, filePath);
 }
 
 function buildPdfHtml({ forecastPackage, styleLabel, charts }) {
@@ -149,10 +178,10 @@ function buildPdfHtml({ forecastPackage, styleLabel, charts }) {
         <article class="chart">
           <header>
             <div>
-              <p class="slot">${escapeHtml(slot.badge || slot.label)}</p>
+              <p class="slot">${escapeHtml(slot.label)}</p>
               <h2>${escapeHtml(project?.name || slot.label)}</h2>
             </div>
-            <span class="type">${escapeHtml(slot.label)}</span>
+            <span class="type">${escapeHtml(styleLabel)}</span>
           </header>
           <div class="map">
             <img src="${imageDataUrl}" alt="${escapeHtml(slot.label)}" />
@@ -186,7 +215,7 @@ function buildPdfHtml({ forecastPackage, styleLabel, charts }) {
     .grid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2.5mm; }
     .chart { min-height: 0; display: grid; grid-template-rows: auto 1fr auto; gap: 1.5mm; border: 1px solid #bfdbfe; border-radius: 4mm; padding: 2mm; background: #f8fafc; overflow: hidden; }
     .chart header, .chart footer { display: flex; justify-content: space-between; gap: 3mm; align-items: flex-start; }
-    .slot { margin: 0 0 .5mm; color: #0369a1; font-size: 6pt; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+    .slot { margin: 0 0 .5mm; color: #0369a1; font-size: 6pt; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
     h2 { margin: 0; font-size: 8pt; line-height: 1.1; }
     .type { color: #64748b; font-size: 6pt; font-weight: 900; text-transform: uppercase; }
     .map { min-height: 0; overflow: hidden; border: 1px solid #dbeafe; border-radius: 3mm; background: #e2e8f0; }
@@ -215,68 +244,35 @@ function buildPdfHtml({ forecastPackage, styleLabel, charts }) {
 </html>`;
 }
 
-async function capturePublishedChart(page, origin, projectId, style) {
-  await page.evaluateOnNewDocument((styleMode) => {
-    globalThis.localStorage.setItem('wavelab.chartStyleMode', styleMode);
-  }, style);
-
-  await page.goto(`${origin}/charts/${encodeURIComponent(projectId)}?serverPdf=1`, {
-    waitUntil: 'networkidle2',
-    timeout: 60_000,
-  });
-
-  const selector = `[data-published-chart-map="${projectId}"][data-map-ready="true"]`;
-  await page.waitForSelector(selector, { timeout: 45_000 });
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-
-  const element = await page.$(selector);
-  if (!element) throw new Error(`Published map not found for project ${projectId}`);
-
-  const image = await element.screenshot({ type: 'png' });
-  return `data:image/png;base64,${image.toString('base64')}`;
+async function loadPublishedPackage(packageId) {
+  return ForecastPackage.findById(packageId).populate('charts.project');
 }
 
-async function generateStyleArtifact(browser, forecastPackage, style) {
+async function generateStylePdf(browser, forecastPackage, style) {
   const styleDefinition = PDF_STYLES.find((item) => item.id === style);
   if (!styleDefinition) throw new Error(`Unsupported PDF style: ${style}`);
 
-  const origin = getPublicOrigin();
-  const charts = [];
-
-  for (const slot of REQUIRED_FORECAST_CHARTS) {
-    const chart = forecastPackage.charts.find((item) => item.chartType === slot.chartType);
-    const project = chart?.project;
-    if (!project?._id || project.status !== PROJECT_STATUS.PUBLISHED) {
-      throw new Error(`Published chart unavailable for ${slot.chartType}`);
-    }
-
-    const page = await browser.newPage();
-    const projectId = String(project._id);
-    const diagnosticContext = {
-      packageId: String(forecastPackage._id),
-      projectId,
-      chartType: slot.chartType,
-      style,
-    };
-    attachPageDiagnostics(page, diagnosticContext);
-    try {
-      console.info('[PublishedPdf] Capturing published chart', diagnosticContext);
-      await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: 1 });
-      const imageDataUrl = await capturePublishedChart(page, origin, projectId, style);
-      charts.push({
-        slot: { ...slot, badge: slot.label.replace(' Wave Forecast', '').toUpperCase() },
-        project,
-        imageDataUrl,
-      });
-      console.info('[PublishedPdf] Published chart captured', diagnosticContext);
-    } finally {
-      await page.close();
-    }
+  const readiness = getSnapshotReadiness(forecastPackage, style);
+  if (!readiness.ready) {
+    throw new Error(
+      `Published chart snapshots are incomplete for ${style}: ${readiness.readyCount}/${readiness.requiredCount}`
+    );
   }
 
-  const renderPage = await browser.newPage();
+  const charts = [];
+  for (const item of readiness.snapshots) {
+    const chart = forecastPackage.charts.find((row) => row.chartType === item.chartType);
+    const image = await fs.readFile(item.snapshot.filePath);
+    charts.push({
+      slot: REQUIRED_FORECAST_CHARTS.find((slot) => slot.chartType === item.chartType),
+      project: chart?.project,
+      imageDataUrl: `data:image/png;base64,${image.toString('base64')}`,
+    });
+  }
+
+  const page = await browser.newPage();
   try {
-    await renderPage.setContent(
+    await page.setContent(
       buildPdfHtml({
         forecastPackage,
         styleLabel: styleDefinition.label,
@@ -285,47 +281,37 @@ async function generateStyleArtifact(browser, forecastPackage, style) {
       { waitUntil: 'load' }
     );
 
-    return await renderPage.pdf({
+    return await page.pdf({
       format: 'A4',
       landscape: true,
       printBackground: true,
       margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' },
     });
   } finally {
-    await renderPage.close();
+    await page.close();
   }
-}
-
-async function loadPublishedPackage(packageId) {
-  return ForecastPackage.findById(packageId).populate('charts.project');
 }
 
 async function generatePackageArtifacts(packageId) {
   const forecastPackage = await loadPublishedPackage(packageId);
-  if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.PUBLISHED) {
+  if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.PUBLISHED) return;
+
+  ensurePdfArtifactRows(forecastPackage);
+  const sourceRevision = getSourceRevision(forecastPackage);
+  const readyStyles = PDF_STYLES.filter(({ id }) => getSnapshotReadiness(forecastPackage, id).ready);
+  if (!readyStyles.length) {
+    await forecastPackage.save();
     return;
   }
 
-  ensureArtifactRows(forecastPackage);
-  const sourceRevision = getSourceRevision(forecastPackage);
-  const packageDir = path.join(getArtifactRoot(), String(forecastPackage._id));
-  await fs.mkdir(packageDir, { recursive: true });
-
   const browser = await puppeteer.launch({
     headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--enable-webgl',
-      '--ignore-gpu-blocklist',
-      '--use-gl=swiftshader',
-    ],
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   });
 
   try {
-    for (const { id: style } of PDF_STYLES) {
-      updateArtifact(forecastPackage, style, {
+    for (const { id: style } of readyStyles) {
+      updatePdfArtifact(forecastPackage, style, {
         status: 'generating',
         error: '',
         sourceRevision,
@@ -333,20 +319,14 @@ async function generatePackageArtifacts(packageId) {
       await forecastPackage.save();
 
       try {
-        const pdfBuffer = await generateStyleArtifact(browser, forecastPackage, style);
-        const fileName = `wave-chart-set-${formatManilaDateKey(
-          forecastPackage.forecastDate
-        )}-${style}.pdf`;
-        const finalPath = path.join(packageDir, fileName);
-        const temporaryPath = `${finalPath}.tmp-${process.pid}-${Date.now()}`;
+        const pdfBuffer = await generateStylePdf(browser, forecastPackage, style);
+        const finalPath = getPdfPath(forecastPackage, style);
+        await writeAtomic(finalPath, pdfBuffer);
 
-        await fs.writeFile(temporaryPath, pdfBuffer);
-        await fs.rename(temporaryPath, finalPath);
-
-        updateArtifact(forecastPackage, style, {
+        updatePdfArtifact(forecastPackage, style, {
           status: 'ready',
           filePath: finalPath,
-          fileName,
+          fileName: path.basename(finalPath),
           fileSize: pdfBuffer.length,
           sha256: crypto.createHash('sha256').update(pdfBuffer).digest('hex'),
           generatedAt: new Date(),
@@ -355,13 +335,12 @@ async function generatePackageArtifacts(packageId) {
         });
       } catch (error) {
         const errorMessage = String(error?.message || error).slice(0, 1000);
-        console.error('[PublishedPdf] Style generation failed', {
+        console.error('[PublishedPdf] Static PDF composition failed', {
           packageId: String(forecastPackage._id),
           style,
           message: errorMessage,
-          stack: error?.stack,
         });
-        updateArtifact(forecastPackage, style, {
+        updatePdfArtifact(forecastPackage, style, {
           status: 'failed',
           error: errorMessage,
           generatedAt: null,
@@ -375,16 +354,97 @@ async function generatePackageArtifacts(packageId) {
   }
 }
 
+export async function initializePublishedPackageArtifacts(packageId) {
+  const forecastPackage = await loadPublishedPackage(packageId);
+  if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.PUBLISHED) return null;
+
+  ensurePdfArtifactRows(forecastPackage);
+  const sourceRevision = getSourceRevision(forecastPackage);
+  PDF_STYLES.forEach(({ id }) => {
+    updatePdfArtifact(forecastPackage, id, {
+      status: 'pending',
+      sourceRevision,
+      error: '',
+      generatedAt: null,
+    });
+  });
+  await forecastPackage.save();
+  return forecastPackage;
+}
+
+export async function savePublishedChartSnapshot({
+  packageId,
+  style,
+  chartType,
+  projectId,
+  imageDataUrl,
+}) {
+  if (!isPublishedPdfStyle(style)) throw new Error('Unsupported published chart style.');
+
+  const forecastPackage = await loadPublishedPackage(packageId);
+  if (!forecastPackage || forecastPackage.status !== FORECAST_PACKAGE_STATUS.PUBLISHED) {
+    throw new Error('Forecast Package must be published before snapshots can be stored.');
+  }
+
+  const chart = (forecastPackage.charts || []).find((item) => item.chartType === chartType);
+  const resolvedProjectId = String(chart?.project?._id || chart?.project || '');
+  if (!chart || !resolvedProjectId || resolvedProjectId !== String(projectId || '')) {
+    throw new Error('Snapshot project does not match the published Forecast Package chart.');
+  }
+  if (chart.project?.status !== PROJECT_STATUS.PUBLISHED) {
+    throw new Error('Snapshot project must be published.');
+  }
+
+  const image = decodePublishedSnapshotDataUrl(imageDataUrl);
+  const sourceRevision = getSourceRevision(forecastPackage);
+  const filePath = getSnapshotPath(forecastPackage, style, chartType);
+  await writeAtomic(filePath, image);
+
+  upsertSnapshotRow(forecastPackage, style, chartType, {
+    project: chart.project._id,
+    filePath,
+    fileName: path.basename(filePath),
+    fileSize: image.length,
+    sha256: crypto.createHash('sha256').update(image).digest('hex'),
+    sourceRevision,
+    capturedAt: new Date(),
+  });
+
+  updatePdfArtifact(forecastPackage, style, {
+    status: 'pending',
+    filePath: '',
+    fileName: '',
+    fileSize: 0,
+    sha256: '',
+    generatedAt: null,
+    sourceRevision,
+    error: '',
+  });
+
+  await forecastPackage.save();
+  return getSnapshotReadiness(forecastPackage, style);
+}
+
 export function queuePublishedPackagePdfGeneration(packageId) {
   const key = String(packageId || '');
   if (!key) return null;
-  if (generationPromises.has(key)) return generationPromises.get(key);
+
+  if (generationPromises.has(key)) {
+    generationRerunRequests.add(key);
+    return generationPromises.get(key);
+  }
 
   const promise = generatePackageArtifacts(key)
     .catch((error) => {
-      console.error('[PublishedPdf] Package generation failed:', error);
+      console.error('[PublishedPdf] Package composition failed:', error);
     })
-    .finally(() => generationPromises.delete(key));
+    .finally(() => {
+      generationPromises.delete(key);
+
+      if (generationRerunRequests.delete(key)) {
+        queuePublishedPackagePdfGeneration(key);
+      }
+    });
 
   generationPromises.set(key, promise);
   return promise;
@@ -410,18 +470,52 @@ export async function getPublishedPdfArtifactForDate(dateKey, style) {
   const artifact = (forecastPackage.publishedPdfArtifacts || []).find(
     (item) => item.style === style
   );
-  return { forecastPackage, artifact: artifact || null };
+  return {
+    forecastPackage,
+    artifact: artifact || null,
+    readiness: getSnapshotReadiness(forecastPackage, style),
+  };
 }
 
 export async function ensurePublishedPdfArtifactForDate(dateKey, style) {
   const result = await getPublishedPdfArtifactForDate(dateKey, style);
   if (!result) return null;
 
-  if (!result.artifact || ['pending', 'generating', 'failed'].includes(result.artifact.status)) {
+  if (
+    result.readiness.ready &&
+    (!result.artifact || ['pending', 'generating', 'failed'].includes(result.artifact.status))
+  ) {
     queuePublishedPackagePdfGeneration(result.forecastPackage._id);
   }
 
   return result;
+}
+
+export async function getPublishedPackageArtifactReadiness(packageId) {
+  const forecastPackage = await loadPublishedPackage(packageId);
+  if (!forecastPackage) return null;
+
+  return {
+    packageId: String(forecastPackage._id),
+    styles: Object.fromEntries(
+      PDF_STYLES.map(({ id }) => {
+        const readiness = getSnapshotReadiness(forecastPackage, id);
+        const artifact = getPdfArtifactRow(forecastPackage, id);
+        return [
+          id,
+          {
+            ready: readiness.ready,
+            readyCount: readiness.readyCount,
+            requiredCount: readiness.requiredCount,
+            readyChartTypes: readiness.snapshots
+              .filter((snapshot) => snapshot.ready)
+              .map((snapshot) => snapshot.chartType),
+            pdfStatus: artifact?.status || 'pending',
+          },
+        ];
+      })
+    ),
+  };
 }
 
 export function getPublishedPdfStyles() {

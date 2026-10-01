@@ -18,6 +18,10 @@ import {
 import { submitForecastPackage } from '../controllers/forecastPackageSubmitController.js';
 import { getCurrentForecastPackage } from '../controllers/currentForecastPackageController.js';
 import {
+  getPublishedArtifactReadiness,
+  uploadPublishedChartSnapshot,
+} from '../controllers/publishedArtifactController.js';
+import {
   getForecastPackageChartContextByProject,
   joinForecastPackageChartEditingByProject,
   releaseForecastPackageChartEditingByProject,
@@ -366,6 +370,16 @@ router.patch(
   requirePermission('projects.publish'),
   emitForecastPackageWorkflowAfterResponse('published'),
   publishForecastPackage
+);
+router.get(
+  '/:id/published-artifacts/readiness',
+  requirePermission('projects.publish'),
+  getPublishedArtifactReadiness
+);
+router.post(
+  '/:id/published-artifacts/snapshots',
+  requirePermission('projects.publish'),
+  uploadPublishedChartSnapshot
 );
 
 router.post(

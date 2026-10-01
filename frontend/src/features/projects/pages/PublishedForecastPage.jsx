@@ -296,9 +296,6 @@ export default function PublishedForecastPage() {
   const { activeChartType, setActiveChartType } = useChartType();
   const { label: mapBoundsLabel, settings: publicSettings } = usePublicMapBounds();
   const exportMapRef = useRef(null);
-  const serverPdfCapture =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('serverPdf') === '1';
   const [state, setState] = useState({ loading: true, error: '', data: null });
   const [copied, setCopied] = useState(false);
   const [archiveState, setArchiveState] = useState({ loading: false, error: '' });
@@ -361,7 +358,7 @@ export default function PublishedForecastPage() {
     : `Preparing PDF and image exports using ${mapBoundsLabel}…`;
 
   useEffect(() => {
-    if (serverPdfCapture || !project?._id) return undefined;
+    if (!project?._id) return undefined;
 
     let cancelled = false;
 
@@ -388,7 +385,7 @@ export default function PublishedForecastPage() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [exportReadinessKey, project?._id, serverPdfCapture]);
+  }, [exportReadinessKey, project?._id]);
 
   const getExportMapDataUrl = () => {
     if (!isExportReady)
@@ -526,14 +523,12 @@ export default function PublishedForecastPage() {
   return (
     <main className={pageClass}>
       <LiquidBackdrop isDarkMode={isDarkMode} />
-      {!serverPdfCapture && (
-        <PublishedForecastExportMap
-          ref={exportMapRef}
-          features={featureCollection}
-          chartStyleMode={activeStyleMode}
-          raster={raster}
-        />
-      )}
+      <PublishedForecastExportMap
+        ref={exportMapRef}
+        features={featureCollection}
+        chartStyleMode={activeStyleMode}
+        raster={raster}
+      />
 
       <div className="relative z-10 mx-auto grid min-h-[calc(100vh-76px)] max-w-[1600px] grid-rows-[auto_1fr] gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <section className={glassPanelClass(isDarkMode, 'overflow-hidden px-4 py-3 sm:px-5')}>

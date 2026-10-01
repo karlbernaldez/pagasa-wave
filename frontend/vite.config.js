@@ -72,6 +72,15 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ['dev.wavelab.adovelopers.com'],
+    proxy: process.env.VITE_WAVETILES_REMOTE_ORIGIN
+      ? {
+          '/wavetiles': {
+            target: process.env.VITE_WAVETILES_REMOTE_ORIGIN,
+            changeOrigin: true,
+            secure: true,
+          },
+        }
+      : undefined,
   },
   test: {
     environment: 'jsdom',
