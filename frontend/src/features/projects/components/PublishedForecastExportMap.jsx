@@ -713,16 +713,33 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
     let firstFrame = 0;
     let secondFrame = 0;
     let retryTimer = 0;
+    let idleFallbackTimer = 0;
+    let captureScheduled = false;
     const signature = renderSignature;
     clearReadyCapture();
 
     const captureAfterPaint = () => {
-      if (cancelled) return;
+      if (cancelled || captureScheduled) return;
+      captureScheduled = true;
       firstFrame = window.requestAnimationFrame(() => {
         secondFrame = window.requestAnimationFrame(() => {
           if (!cancelled) markReadyCapture(signature);
         });
       });
+    };
+
+    const waitForIdleOrFallback = () => {
+      if (cancelled) return;
+      if (map.loaded()) {
+        captureAfterPaint();
+        return;
+      }
+
+      map.once('idle', captureAfterPaint);
+      idleFallbackTimer = window.setTimeout(() => {
+        map.off('idle', captureAfterPaint);
+        captureAfterPaint();
+      }, 2500);
     };
 
     const renderWhenReady = () => {
@@ -731,8 +748,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
         retryTimer = window.setTimeout(renderWhenReady, 120);
         return;
       }
-      if (map.loaded()) captureAfterPaint();
-      else map.once('idle', captureAfterPaint);
+      waitForIdleOrFallback();
     };
 
     if (isMapStyleReady(map)) renderWhenReady();
@@ -745,6 +761,7 @@ const PublishedForecastExportMap = forwardRef(function PublishedForecastExportMa
       map.off('idle', captureAfterPaint);
       map.off('wavelab.exportImagesLoaded', renderWhenReady);
       if (retryTimer) window.clearTimeout(retryTimer);
+      if (idleFallbackTimer) window.clearTimeout(idleFallbackTimer);
       if (firstFrame) window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
