@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, FolderKanban } from 'lucide-react';
@@ -103,41 +103,8 @@ function getEmptyStateCopy({ hasFilters }) {
 }
 
 function StateCard({ children, isDarkMode }) {
-  const publishedPackageForBackfill = useMemo(
-    () =>
-      packages.find(
-        (forecastPackage) =>
-          forecastPackage.status === 'Published' &&
-          getId(forecastPackage) &&
-          Array.isArray(forecastPackage.charts)
-      ) || null,
-    [packages]
-  );
-
-  useMemo(() => publishedPackageForBackfill, [publishedPackageForBackfill]);
-
   return (
-    <>
-      {artifactCaptureJob && (
-        <PublishedArtifactCaptureJob
-          packageId={artifactCaptureJob.packageId}
-          charts={artifactCaptureJob.charts}
-          onProgress={setArtifactCaptureProgress}
-          onComplete={() => {
-            console.info('[PublishedPdf] Published chart snapshots completed');
-            setArtifactCaptureJob(null);
-            setArtifactCaptureProgress(null);
-            void query.refetch();
-          }}
-          onError={(message) => {
-            console.error('[PublishedPdf] Published snapshot capture failed:', message);
-            setFeedbackError(message);
-            setArtifactCaptureJob(null);
-            setArtifactCaptureProgress(null);
-          }}
-        />
-      )}
-      <div
+    <div
       className={`rounded-2xl border p-10 text-center shadow-xl backdrop-blur-2xl ${
         isDarkMode
           ? 'border-white/10 bg-slate-950/48 text-slate-200 shadow-black/20'
@@ -146,7 +113,6 @@ function StateCard({ children, isDarkMode }) {
     >
       {children}
     </div>
-    </>
   );
 }
 
@@ -170,6 +136,7 @@ export default function AdminForecastPackageReviewPageV2() {
   const [feedbackError, setFeedbackError] = useState('');
   const [artifactCaptureJob, setArtifactCaptureJob] = useState(null);
   const [artifactCaptureProgress, setArtifactCaptureProgress] = useState(null);
+  const checkedArtifactPackagesRef = useRef(new Set());
 
   const query = useQuery({
     queryKey: ['admin-forecast-packages', page, statusFilter],
@@ -195,6 +162,49 @@ export default function AdminForecastPackageReviewPageV2() {
     () => visiblePackages.filter((forecastPackage) => forecastPackage.id !== dailyPackage?.id),
     [visiblePackages, dailyPackage]
   );
+  const publishedPackageForBackfill = useMemo(
+    () =>
+      packages.find(
+        (forecastPackage) =>
+          forecastPackage.status === 'Published' &&
+          getId(forecastPackage) &&
+          Array.isArray(forecastPackage.charts)
+      ) || null,
+    [packages]
+  );
+
+  useEffect(() => {
+    if (!publishedPackageForBackfill || artifactCaptureJob) return undefined;
+
+    const packageId = getId(publishedPackageForBackfill);
+    if (!packageId || checkedArtifactPackagesRef.current.has(packageId)) return undefined;
+
+    checkedArtifactPackagesRef.current.add(packageId);
+    const controller = new AbortController();
+
+    fetchPublishedArtifactReadiness(packageId, { signal: controller.signal })
+      .then((readiness) => {
+        const styles = Object.values(readiness?.styles || {});
+        if (!styles.some((style) => !style.ready)) return;
+
+        setArtifactCaptureJob({
+          packageId,
+          charts: publishedPackageForBackfill.charts || [],
+        });
+        setArtifactCaptureProgress({
+          completed: 0,
+          total: (publishedPackageForBackfill.charts || []).length * 3,
+        });
+      })
+      .catch((error) => {
+        if (error?.name !== 'AbortError') {
+          console.warn('[PublishedPdf] Artifact backfill readiness check failed:', error);
+        }
+      });
+
+    return () => controller.abort();
+  }, [artifactCaptureJob, publishedPackageForBackfill]);
+
 
   const total = query.data?.total ?? visiblePackages.length;
   const totalPages = Math.max(1, query.data?.totalPages ?? 1);
@@ -268,7 +278,10 @@ export default function AdminForecastPackageReviewPageV2() {
         packageId,
         charts: forecastPackage.charts || [],
       });
-      setArtifactCaptureProgress({ completed: 0, total: 12 });
+      setArtifactCaptureProgress({
+        completed: 0,
+        total: (forecastPackage.charts || []).length * 3,
+      });
       await query.refetch();
     } catch (error) {
       console.error('Failed to publish forecast package:', error);
@@ -304,8 +317,41 @@ export default function AdminForecastPackageReviewPageV2() {
   };
 
   return (
-    <div className="min-h-full bg-transparent">
+    <>
+      {artifactCaptureJob && (
+        <PublishedArtifactCaptureJob
+          packageId={artifactCaptureJob.packageId}
+          charts={artifactCaptureJob.charts}
+          onProgress={setArtifactCaptureProgress}
+          onComplete={() => {
+            console.info('[PublishedPdf] Published chart snapshots completed');
+            setArtifactCaptureJob(null);
+            setArtifactCaptureProgress(null);
+            void query.refetch();
+          }}
+          onError={(message) => {
+            console.error('[PublishedPdf] Published snapshot capture failed:', message);
+            setFeedbackError(message);
+            setArtifactCaptureJob(null);
+            setArtifactCaptureProgress(null);
+          }}
+        />
+      )}
+      <div className="min-h-full bg-transparent">
       <div className="mx-auto max-w-[1500px] space-y-5 p-4 sm:p-6">
+        {artifactCaptureProgress && (
+          <div
+            className={`rounded-xl border px-4 py-3 text-sm font-semibold backdrop-blur-xl ${
+              isDarkMode
+                ? 'border-cyan-300/20 bg-cyan-300/10 text-cyan-100'
+                : 'border-cyan-200 bg-cyan-50/85 text-cyan-800'
+            }`}
+          >
+            Preparing published PDF artifacts: {artifactCaptureProgress.completed}/
+            {artifactCaptureProgress.total} chart snapshots stored.
+          </div>
+        )}
+
         {feedbackError && (
           <div
             role="alert"
@@ -460,6 +506,7 @@ export default function AdminForecastPackageReviewPageV2() {
         onPublish={(project) => publishProject(getId(project))}
         onActionComplete={onActionComplete}
       />
-    </div>
+      </div>
+    </>
   );
 }
